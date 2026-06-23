@@ -1,0 +1,2236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus Desk — Events & Entrance</title>
+
+  <!-- Libraries (need internet on first load; cached afterward). QR + Excel. -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+
+  <style>
+    /* ====================== DESIGN TOKENS — single brand color ====================== */
+    :root {
+      --brand: #0E7C7B;
+      /* the one brand color (deep teal) */
+      --brand-700: #0A5F5E;
+      --brand-600: #0E7C7B;
+      --brand-300: #5CB0AE;
+      --brand-tint: #E7F2F1;
+      --brand-tint-2: #F2F8F7;
+
+      --ink: #13211F;
+      /* near-black with a teal cast */
+      --ink-2: #3D514E;
+      --muted: #6E817E;
+      --line: #E2E8E6;
+      --line-2: #EEF3F2;
+      --surface: #FFFFFF;
+      --bg: #F6F8F7;
+
+      /* functional status colors (not decoration) */
+      --ok: #147D55;
+      --ok-bg: #E5F4ec;
+      --warn: #9A6700;
+      --warn-bg: #FBF1DA;
+      --bad: #B42318;
+      --bad-bg: #FCEBE9;
+      --info: #1F5FA8;
+      --info-bg: #E8F0FA;
+
+      --r: 14px;
+      --r-sm: 10px;
+      --r-lg: 20px;
+      --shadow: 0 1px 2px rgba(19, 33, 31, .04), 0 8px 24px -12px rgba(19, 33, 31, .18);
+      --shadow-lg: 0 24px 60px -24px rgba(19, 33, 31, .35);
+      --font-d: 'Space Grotesk', system-ui, sans-serif;
+      --font-b: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      font-family: var(--font-b);
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer
+    }
+
+    input,
+    select,
+    textarea {
+      font-family: inherit;
+      font-size: 14px
+    }
+
+    a {
+      color: var(--brand-700)
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-family: var(--font-d);
+      margin: 0;
+      letter-spacing: -.01em
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cdd8d6;
+      border-radius: 20px;
+      border: 3px solid var(--bg)
+    }
+
+    /* ====================== BUTTONS / CHIPS / INPUTS ====================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      border-radius: var(--r-sm);
+      padding: 9px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      background: var(--surface);
+      color: var(--ink);
+      transition: .15s;
+      white-space: nowrap
+    }
+
+    .btn:hover {
+      transform: translateY(-1px)
+    }
+
+    .btn:active {
+      transform: translateY(0)
+    }
+
+    .btn.primary {
+      background: var(--brand);
+      color: #fff
+    }
+
+    .btn.primary:hover {
+      background: var(--brand-700)
+    }
+
+    .btn.ghost {
+      background: transparent;
+      border-color: var(--line)
+    }
+
+    .btn.ghost:hover {
+      background: var(--brand-tint-2);
+      border-color: var(--brand-300)
+    }
+
+    .btn.subtle {
+      background: var(--brand-tint);
+      color: var(--brand-700)
+    }
+
+    .btn.danger {
+      background: var(--bad-bg);
+      color: var(--bad)
+    }
+
+    .btn.danger:hover {
+      background: var(--bad);
+      color: #fff
+    }
+
+    .btn.sm {
+      padding: 6px 10px;
+      font-size: 12.5px;
+      border-radius: 8px
+    }
+
+    .btn.block {
+      width: 100%;
+      justify-content: center
+    }
+
+    .btn[disabled] {
+      opacity: .5;
+      pointer-events: none
+    }
+
+    .iconbtn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      display: inline-grid;
+      place-items: center;
+      color: var(--ink-2)
+    }
+
+    .iconbtn:hover {
+      border-color: var(--brand-300);
+      color: var(--brand-700)
+    }
+
+    .field {
+      display: block;
+      margin-bottom: 14px
+    }
+
+    .field>label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink-2);
+      margin-bottom: 6px
+    }
+
+    .field .req {
+      color: var(--bad)
+    }
+
+    .input,
+    select.input,
+    textarea.input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      padding: 10px 12px;
+      background: #fff;
+      color: var(--ink);
+      transition: .15s;
+      outline: none
+    }
+
+    .input:focus,
+    textarea.input:focus,
+    select.input:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-tint)
+    }
+
+    textarea.input {
+      min-height: 92px;
+      resize: vertical
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 5px
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 999px;
+      letter-spacing: .01em
+    }
+
+    .chip.ok {
+      background: var(--ok-bg);
+      color: var(--ok)
+    }
+
+    .chip.warn {
+      background: var(--warn-bg);
+      color: var(--warn)
+    }
+
+    .chip.bad {
+      background: var(--bad-bg);
+      color: var(--bad)
+    }
+
+    .chip.info {
+      background: var(--info-bg);
+      color: var(--info)
+    }
+
+    .chip.muted {
+      background: var(--line-2);
+      color: var(--ink-2)
+    }
+
+    .chip.brand {
+      background: var(--brand-tint);
+      color: var(--brand-700)
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      display: inline-block
+    }
+
+    /* ====================== LAYOUT SHELL ====================== */
+    .shell {
+      display: grid;
+      grid-template-columns: 248px 1fr;
+      min-height: 100vh
+    }
+
+    .side {
+      background: #fff;
+      border-right: 1px solid var(--line);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 18px 14px
+    }
+
+    .brandmark {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 6px 8px 18px
+    }
+
+    .brandmark .logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      background: var(--brand);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-family: var(--font-d);
+      font-weight: 700;
+      font-size: 18px;
+      box-shadow: var(--shadow)
+    }
+
+    .brandmark b {
+      font-family: var(--font-d);
+      font-size: 16px;
+      display: block;
+      line-height: 1.1
+    }
+
+    .brandmark span {
+      font-size: 11.5px;
+      color: var(--muted)
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: 4px
+    }
+
+    .nav .label {
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      padding: 14px 10px 6px;
+      font-weight: 700
+    }
+
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 9px 11px;
+      border-radius: 10px;
+      color: var(--ink-2);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      position: relative
+    }
+
+    .nav a:hover {
+      background: var(--brand-tint-2);
+      color: var(--ink)
+    }
+
+    .nav a.active {
+      background: var(--brand-tint);
+      color: var(--brand-700);
+      font-weight: 600
+    }
+
+    .nav a .ic {
+      width: 18px;
+      height: 18px;
+      flex: none
+    }
+
+    .nav a .badge {
+      margin-left: auto;
+      background: var(--brand);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 999px;
+      min-width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      padding: 0 5px
+    }
+
+    .side .foot {
+      margin-top: auto;
+      border-top: 1px solid var(--line-2);
+      padding-top: 12px
+    }
+
+    .side .who {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px
+    }
+
+    .side .who .av {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: var(--ink);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 13px
+    }
+
+    .side .who small {
+      display: block;
+      color: var(--muted);
+      font-size: 11.5px
+    }
+
+    .main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(246, 248, 247, .85);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 26px;
+      display: flex;
+      align-items: center;
+      gap: 14px
+    }
+
+    .topbar .mh {
+      display: none
+    }
+
+    .topbar h1 {
+      font-size: 19px
+    }
+
+    .topbar .crumb {
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 500
+    }
+
+    .topbar .spacer {
+      flex: 1
+    }
+
+    .content {
+      padding: 24px 26px 60px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto
+    }
+
+    /* ====================== CARDS / GRID / TABLE ====================== */
+    .grid {
+      display: grid;
+      gap: 16px
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding: 18px;
+      box-shadow: var(--shadow)
+    }
+
+    .stat .k {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .stat .v {
+      font-family: var(--font-d);
+      font-size: 30px;
+      font-weight: 700;
+      margin-top: 8px;
+      letter-spacing: -.02em
+    }
+
+    .stat .s {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .stat .ic {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      background: var(--brand-tint);
+      color: var(--brand-700);
+      display: grid;
+      place-items: center
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow: hidden
+    }
+
+    .panel .ph {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line-2)
+    }
+
+    .panel .ph h2 {
+      font-size: 15.5px
+    }
+
+    .panel .ph .spacer {
+      flex: 1
+    }
+
+    .panel .pb {
+      padding: 18px
+    }
+
+    .panel .pb.flush {
+      padding: 0
+    }
+
+    .tablewrap {
+      overflow-x: auto
+    }
+
+    table.tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      min-width: 560px
+    }
+
+    table.tbl th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted);
+      font-weight: 700;
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--brand-tint-2);
+      position: sticky;
+      top: 0
+    }
+
+    table.tbl td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line-2);
+      vertical-align: middle
+    }
+
+    table.tbl tr:last-child td {
+      border-bottom: none
+    }
+
+    table.tbl tr:hover td {
+      background: var(--brand-tint-2)
+    }
+
+    .tbl .name {
+      font-weight: 600;
+      color: var(--ink)
+    }
+
+    .tbl .sub {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .rowacts {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end
+    }
+
+    .empty {
+      text-align: center;
+      padding: 46px 20px;
+      color: var(--muted)
+    }
+
+    .empty .big {
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      background: var(--brand-tint);
+      color: var(--brand-700);
+      display: grid;
+      place-items: center;
+      margin: 0 auto 14px
+    }
+
+    .empty h3 {
+      color: var(--ink);
+      font-size: 16px;
+      margin-bottom: 6px
+    }
+
+    .eventcard {
+      display: flex;
+      flex-direction: column;
+      gap: 0
+    }
+
+    .eventcard .top {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line-2)
+    }
+
+    .eventcard .cat {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em
+    }
+
+    .eventcard h3 {
+      font-size: 16.5px;
+      margin: 8px 0 4px
+    }
+
+    .eventcard .meta {
+      font-size: 12.5px;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 14px;
+      margin-top: 8px
+    }
+
+    .eventcard .bot {
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .cardgrid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--line-2);
+      padding: 4px;
+      border-radius: 11px;
+      width: fit-content;
+      max-width: 100%;
+      overflow: auto
+    }
+
+    .tabs button {
+      border: none;
+      background: transparent;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--ink-2);
+      white-space: nowrap
+    }
+
+    .tabs button.active {
+      background: #fff;
+      color: var(--brand-700);
+      box-shadow: var(--shadow)
+    }
+
+    /* timeline */
+    .tl {
+      position: relative;
+      padding-left: 24px
+    }
+
+    .tl::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 4px;
+      bottom: 4px;
+      width: 2px;
+      background: var(--line)
+    }
+
+    .tl .it {
+      position: relative;
+      padding: 0 0 16px
+    }
+
+    .tl .it::before {
+      content: "";
+      position: absolute;
+      left: -22px;
+      top: 3px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid var(--brand-300)
+    }
+
+    .tl .it.done::before {
+      background: var(--brand);
+      border-color: var(--brand)
+    }
+
+    .tl .it .t {
+      font-weight: 600;
+      font-size: 13.5px
+    }
+
+    .tl .it .d {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    /* ====================== MODAL ====================== */
+    .modal-root {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none
+    }
+
+    .modal-root.open {
+      display: block
+    }
+
+    .modal-bg {
+      position: absolute;
+      inset: 0;
+      background: rgba(19, 33, 31, .42);
+      backdrop-filter: blur(2px);
+      animation: fade .2s
+    }
+
+    .modal {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border-radius: var(--r-lg);
+      width: min(560px, calc(100vw - 32px));
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+      box-shadow: var(--shadow-lg);
+      animation: pop .22s
+    }
+
+    .modal.lg {
+      width: min(720px, calc(100vw - 32px))
+    }
+
+    .modal .mh {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 20px 22px 8px
+    }
+
+    .modal .mh h2 {
+      font-size: 18px
+    }
+
+    .modal .mh p {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 4px 0 0
+    }
+
+    .modal .mh .x {
+      margin-left: auto;
+      border: none;
+      background: var(--line-2);
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      font-size: 16px;
+      color: var(--ink-2)
+    }
+
+    .modal .mb {
+      padding: 8px 22px 6px
+    }
+
+    .modal .mf {
+      padding: 14px 22px 20px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      position: sticky;
+      bottom: 0;
+      background: #fff
+    }
+
+    @keyframes pop {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -46%) scale(.97)
+      }
+
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1)
+      }
+    }
+
+    @keyframes fade {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    /* dynamic field builder */
+    .fieldrow {
+      display: grid;
+      grid-template-columns: 1fr 120px 78px auto;
+      gap: 8px;
+      align-items: end;
+      padding: 10px;
+      border: 1px solid var(--line-2);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      background: var(--brand-tint-2)
+    }
+
+    .fieldrow .field {
+      margin: 0
+    }
+
+    .fieldrow .field>label {
+      font-size: 11px
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--line-2);
+      margin: 16px 0
+    }
+
+    .subhead {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted);
+      margin: 6px 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    /* toast */
+    .toasts {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .toast {
+      background: var(--ink);
+      color: #fff;
+      padding: 11px 15px;
+      border-radius: 11px;
+      font-size: 13.5px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slide .25s;
+      max-width: 330px
+    }
+
+    .toast.ok {
+      background: #0f5c4a
+    }
+
+    .toast.bad {
+      background: #8c2018
+    }
+
+    .toast.warn {
+      background: #7a5200
+    }
+
+    @keyframes slide {
+      from {
+        opacity: 0;
+        transform: translateY(12px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* ====================== PUBLIC / AUTH SCREENS ====================== */
+    .authwrap {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: radial-gradient(1200px 500px at 80% -10%, var(--brand-tint) 0%, transparent 60%), var(--bg)
+    }
+
+    .authcard {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-lg);
+      width: min(440px, 100%);
+      overflow: hidden
+    }
+
+    .authcard .head {
+      padding: 26px 28px 8px
+    }
+
+    .authcard .head .logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 13px;
+      background: var(--brand);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-family: var(--font-d);
+      font-weight: 700;
+      font-size: 22px;
+      margin-bottom: 14px
+    }
+
+    .authcard .head h1 {
+      font-size: 22px
+    }
+
+    .authcard .head p {
+      color: var(--muted);
+      font-size: 13.5px;
+      margin: 6px 0 0
+    }
+
+    .authcard .body {
+      padding: 18px 28px 28px
+    }
+
+    .public {
+      min-height: 100vh;
+      background: radial-gradient(1000px 480px at 50% -12%, var(--brand-tint) 0, transparent 55%), var(--bg);
+      padding: 0 0 60px
+    }
+
+    .public .pbar {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px
+    }
+
+    .public .wrap {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 24px 16px
+    }
+
+    .qrbox {
+      display: grid;
+      place-items: center;
+      gap: 10px
+    }
+
+    .qrbox canvas,
+    .qrbox img {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: #fff
+    }
+
+    /* admit card */
+    .admit {
+      border: 2px solid var(--brand);
+      border-radius: 16px;
+      overflow: hidden;
+      background: #fff
+    }
+
+    .admit .ah {
+      background: var(--brand);
+      color: #fff;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px
+    }
+
+    .admit .ah .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .18);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-d);
+      font-weight: 700
+    }
+
+    .admit .ab {
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: 1fr 130px;
+      gap: 16px
+    }
+
+    .admit dl {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 6px 10px;
+      margin: 0;
+      font-size: 13.5px
+    }
+
+    .admit dt {
+      color: var(--muted);
+      font-weight: 600
+    }
+
+    .admit dd {
+      margin: 0;
+      font-weight: 600
+    }
+
+    .admit .seal {
+      text-align: center
+    }
+
+    /* ====================== RESPONSIVE ====================== */
+    @media (max-width:920px) {
+      .cards {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .cardgrid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media (max-width:760px) {
+      .shell {
+        grid-template-columns: 1fr
+      }
+
+      .side {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 60;
+        width: 260px;
+        transform: translateX(-105%);
+        transition: .25s;
+        box-shadow: var(--shadow-lg)
+      }
+
+      .side.open {
+        transform: none
+      }
+
+      .scrim {
+        position: fixed;
+        inset: 0;
+        background: rgba(19, 33, 31, .4);
+        z-index: 55;
+        display: none
+      }
+
+      .scrim.open {
+        display: block
+      }
+
+      .topbar .mh {
+        display: inline-grid
+      }
+
+      .content {
+        padding: 18px 16px 60px
+      }
+
+      .fieldrow {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .admit .ab {
+        grid-template-columns: 1fr
+      }
+
+      .admit .seal {
+        justify-self: start
+      }
+    }
+
+    @media (max-width:480px) {
+      .cards {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media print {
+      .no-print {
+        display: none !important
+      }
+
+      body {
+        background: #fff
+      }
+
+      .modal-root,
+      .modal-bg {
+        position: static;
+        background: none
+      }
+
+      .modal {
+        position: static;
+        transform: none;
+        box-shadow: none;
+        width: auto;
+        max-height: none
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+  <div class="modal-root" id="modalRoot"></div>
+  <div class="toasts" id="toasts"></div>
+
+  <script>
+    /* =======================================================================
+       Campus Desk — College Events & Entrance Management (single-file, local)
+       Data lives in localStorage. No server. Works offline once libs cached.
+       ======================================================================= */
+
+    /* ---------- tiny helpers ---------- */
+    const $ = (s, el = document) => el.querySelector(s);
+    const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+    const uid = (p = 'id') => p + '_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+    const nowISO = () => new Date().toISOString();
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtDate = iso => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); };
+    const fmtDT = iso => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+
+    /* ---------- storage ---------- */
+    const DB = {
+      read(k, def) { try { const v = localStorage.getItem('cd_' + k); return v == null ? def : JSON.parse(v); } catch (e) { return def; } },
+      write(k, v) { localStorage.setItem('cd_' + k, JSON.stringify(v)); },
+    };
+    function seed() {
+      if (!DB.read('admin', null)) DB.write('admin', { username: 'admin', password: 'admin123', name: 'Administrator' });
+      if (!DB.read('events', null)) DB.write('events', []);
+      if (!DB.read('apps', null)) DB.write('apps', []);   // applicants / registrations (unified)
+      if (!DB.read('trash', null)) DB.write('trash', []);
+    }
+    seed();
+
+    const CATS = {
+      college_event: { label: 'College Event', icon: '🎓', color: 'var(--brand)' },
+      club_meeting: { label: 'Club Meeting', icon: '🏛️', color: '#7A5AF8' },
+      entrance_exam: { label: 'Entrance Exam', icon: '📝', color: '#C9560E' },
+      staff_meeting: { label: 'Staff Meeting', icon: '🧑‍💼', color: '#1F5FA8' },
+    };
+    const COMMON_FIELDS = [
+      { id: 'f_name', label: 'Full Name', type: 'text', required: true },
+      { id: 'f_email', label: 'Email', type: 'email', required: true },
+      { id: 'f_phone', label: 'Phone', type: 'tel', required: true },
+    ];
+    /* status machine for entrance applicants */
+    const STATUS = {
+      submitted: { label: 'Submitted', chip: 'warn' },
+      approved: { label: 'Approved', chip: 'info' },
+      rejected: { label: 'Rejected', chip: 'bad' },
+      admit_issued: { label: 'Admit issued', chip: 'brand' },
+      present: { label: 'Present', chip: 'ok' },
+      absent: { label: 'Absent', chip: 'bad' },
+      result: { label: 'Result out', chip: 'ok' },
+    };
+
+    /* ---------- toast + confirm + modal ---------- */
+    function toast(msg, type = '') {
+      const t = document.createElement('div'); t.className = 'toast ' + type; t.innerHTML = `<span>${esc(msg)}</span>`;
+      $('#toasts').appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = '.3s'; setTimeout(() => t.remove(), 300); }, 2600);
+    }
+
+    function modal(html, opts = {}) {
+      const root = $('#modalRoot');
+      root.innerHTML = `<div class="modal-bg" data-close></div><div class="modal ${opts.lg ? 'lg' : ''}">${html}</div>`;
+      root.classList.add('open');
+      root.querySelector('[data-close]')?.addEventListener('click', closeModal);
+      $$('.modal [data-x]', root).forEach(b => b.addEventListener('click', closeModal));
+      return root.querySelector('.modal');
+    }
+    function closeModal() { $('#modalRoot').classList.remove('open'); $('#modalRoot').innerHTML = ''; }
+    function confirmDelete({ title, body, confirmText = 'Delete', danger = true, onYes }) {
+      modal(`<div class="mh"><div><h2>${esc(title)}</h2><p>${body}</p></div><button class="x" data-x>×</button></div>
+    <div class="mf"><button class="btn ghost" data-x>Cancel</button>
+    <button class="btn ${danger ? 'danger' : 'primary'}" id="cYes">${esc(confirmText)}</button></div>`);
+      $('#cYes').onclick = () => { closeModal(); onYes && onYes(); };
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    /* ---------- icons (inline svg) ---------- */
+    const I = {
+      grid: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+      cal: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9h18M8 3v3M16 3v3"/></svg>',
+      exam: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3.5h11l3 3V20.5H5z"/><path d="M15.5 3.5V7h3.5M8 12h8M8 16h5"/></svg>',
+      check: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 13l5 5L20.5 6"/></svg>',
+      trash: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13"/></svg>',
+      gear: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
+      users: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.4"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.2a3.2 3.2 0 010 6M21 20c0-2.8-1.6-4.6-3.5-5.2"/></svg>',
+    };
+
+    /* ============================ ROUTER ============================ */
+    function route() { return (location.hash || '#/').replace(/^#/, ''); }
+    function go(path) { location.hash = path; }
+    function render() {
+      routeRender();
+      setTimeout(paintInlineQR, 0);
+    }
+    function routeRender() {
+      const r = route();
+      // PUBLIC: /r/<eventId>  (this is what the QR opens — registration / portal)
+      if (r.startsWith('/r/')) { return renderPublic(r.split('/')[2]); }
+      // ADMIN
+      const session = DB.read('session', null);
+      if (!session) { return renderAdminLogin(); }
+      const seg = r.replace(/^\//, '').split('/');
+      switch (seg[0]) {
+        case '': case 'dashboard': return shell('dashboard', viewDashboard());
+        case 'events': return seg[1] ? shell('events', viewEventDetail(seg[1])) : shell('events', viewEvents());
+        case 'entrance': return seg[1] ? shell('entrance', viewEntranceDetail(seg[1])) : shell('entrance', viewEntrance());
+        case 'attendance': return shell('attendance', viewAttendance());
+        case 'trash': return shell('trash', viewTrash());
+        case 'settings': return shell('settings', viewSettings());
+        default: return shell('dashboard', viewDashboard());
+      }
+    }
+    window.addEventListener('hashchange', render);
+
+    /* ============================ SHELL ============================ */
+    function counts() {
+      const apps = DB.read('apps', []);
+      return {
+        pending: apps.filter(a => a.status === 'submitted').length,
+        trash: DB.read('trash', []).length,
+      };
+    }
+    function shell(active, html) {
+      const admin = DB.read('admin', {}); const c = counts();
+      const nav = (href, icon, label, key, badge) => `<a href="#/${href}" class="${active === key ? 'active' : ''}">${icon}<span>${label}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</a>`;
+      $('#app').innerHTML = `
+  <div class="scrim" id="scrim"></div>
+  <div class="shell">
+    <aside class="side" id="side">
+      <div class="brandmark"><div class="logo">C</div><div><b>Campus Desk</b><span>Events &amp; Entrance</span></div></div>
+      <nav class="nav">
+        <div class="label">Overview</div>
+        ${nav('dashboard', I.grid, 'Dashboard', 'dashboard')}
+        ${nav('events', I.cal, 'Events', 'events')}
+        <div class="label">Admissions</div>
+        ${nav('entrance', I.exam, 'Entrance Exams', 'entrance')}
+        ${nav('attendance', I.check, 'Attendance', 'attendance')}
+        <div class="label">System</div>
+        ${nav('trash', I.trash, 'Trash (Trace)', 'trash', c.trash || '')}
+        ${nav('settings', I.gear, 'Settings', 'settings')}
+      </nav>
+      <div class="foot">
+        <div class="who"><div class="av">${esc((admin.name || 'A')[0].toUpperCase())}</div>
+          <div><b style="font-size:13.5px">${esc(admin.name || 'Admin')}</b><small>Signed in</small></div></div>
+        <button class="btn ghost block sm" style="margin-top:8px" onclick="logout()">Sign out</button>
+      </div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="iconbtn mh no-print" onclick="document.getElementById('side').classList.toggle('open');document.getElementById('scrim').classList.toggle('open')">☰</button>
+        <div><div class="crumb">${active === 'dashboard' ? '' : 'Campus Desk'}</div><h1 id="pageTitle">${pageTitle(active)}</h1></div>
+        <div class="spacer"></div>
+        ${active === 'events' ? `<button class="btn primary no-print" onclick="openEventModal()">+ New event</button>` : ''}
+        ${active === 'entrance' ? `<button class="btn primary no-print" onclick="openEventModal('entrance_exam')">+ New entrance</button>` : ''}
+      </header>
+      <main class="content">${html}</main>
+    </div>
+  </div>`;
+      $('#scrim')?.addEventListener('click', () => { $('#side').classList.remove('open'); $('#scrim').classList.remove('open'); });
+    }
+    function pageTitle(a) { return { dashboard: 'Dashboard', events: 'Events', entrance: 'Entrance Exams', attendance: 'Attendance', trash: 'Trash (Trace)', settings: 'Settings' }[a] || 'Campus Desk'; }
+    function logout() { DB.write('session', null); go('/'); render(); }
+
+    /* ============================ DASHBOARD ============================ */
+    function viewDashboard() {
+      const events = DB.read('events', []), apps = DB.read('apps', []);
+      const pending = apps.filter(a => a.status === 'submitted').length;
+      const entrances = events.filter(e => e.category === 'entrance_exam').length;
+      const recent = [...apps].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6);
+      const stat = (k, v, s, ic) => `<div class="card stat"><div class="k"><span class="ic">${ic}</span>${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+      return `
+  <div class="cards">
+    ${stat('Total events', events.length, 'All categories', '📅')}
+    ${stat('Entrance exams', entrances, 'Admission cycles', '📝')}
+    ${stat('Registrations', apps.length, 'People in the system', '👥')}
+    ${stat('Pending approvals', pending, pending ? 'Needs your action' : 'All clear', '⏳')}
+  </div>
+  <div class="grid" style="grid-template-columns:1.4fr 1fr;margin-top:16px">
+    <div class="panel">
+      <div class="ph"><h2>Recent registrations</h2><div class="spacer"></div>
+        ${apps.length ? `<a class="btn ghost sm" href="#/events">View events</a>` : ''}</div>
+      <div class="pb flush">
+        ${recent.length ? `<div class="tablewrap"><table class="tbl"><thead><tr><th>Name</th><th>Event</th><th>Status</th><th>When</th></tr></thead><tbody>
+          ${recent.map(a => {
+        const ev = events.find(e => e.id === a.eventId); const st = STATUS[a.status] || { label: a.status, chip: 'muted' };
+        return `<tr><td><div class="name">${esc(a.data.f_name || '—')}</div><div class="sub">${esc(a.data.f_email || '')}</div></td>
+            <td>${ev ? esc(ev.title) : '<span class="sub">deleted</span>'}</td>
+            <td><span class="chip ${st.chip}"><span class="dot"></span>${st.label}</span></td>
+            <td class="sub">${fmtDT(a.createdAt)}</td></tr>`;
+      }).join('')}
+        </tbody></table></div>`
+          : emptyState('No registrations yet', 'Create an event and share its QR code to start collecting registrations.', 'Create event', "openEventModal()")}
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><h2>Quick start</h2></div>
+      <div class="pb">
+        <p class="hint" style="margin-top:0">Get a working flow going in three steps.</p>
+        <div class="tl" style="margin-top:6px">
+          <div class="it done"><div class="t">1 · Create an event</div><div class="d">Pick a category, add dynamic fields.</div></div>
+          <div class="it done"><div class="t">2 · Share the QR code</div><div class="d">Download &amp; print it for registration / attendance.</div></div>
+          <div class="it done"><div class="t">3 · Manage entries</div><div class="d">Approve, mark attendance, publish results.</div></div>
+        </div>
+        <button class="btn primary block" onclick="openEventModal()">+ New event</button>
+      </div>
+    </div>
+  </div>`;
+    }
+
+    /* ============================ EVENTS ============================ */
+    function nonEntrance() { return DB.read('events', []).filter(e => e.category !== 'entrance_exam'); }
+    function viewEvents() {
+      const events = nonEntrance();
+      if (!events.length) return panelWrap('All events', emptyState('No events yet', 'College events, club meetings and staff meetings will appear here.', 'Create your first event', "openEventModal()"));
+      return `<div class="cardgrid">${events.map(eventCard).join('')}</div>`;
+    }
+    function eventCard(e) {
+      const cat = CATS[e.category]; const regs = DB.read('apps', []).filter(a => a.eventId === e.id).length;
+      return `<div class="panel eventcard">
+    <div class="top">
+      <div class="cat" style="color:${cat.color}">${cat.icon} ${cat.label}</div>
+      <h3>${esc(e.title)}</h3>
+      <div class="meta"><span>📆 ${fmtDate(e.date)}</span>${e.location ? `<span>📍 ${esc(e.location)}</span>` : ''}<span>👥 ${regs} registered</span></div>
+    </div>
+    <div class="bot">
+      <button class="btn primary sm" onclick="go('/events/${e.id}')">Open</button>
+      <button class="btn ghost sm" onclick="showQR('${e.id}')">QR code</button>
+      <div style="flex:1"></div>
+      <button class="iconbtn" title="Delete" onclick="askDeleteEvent('${e.id}')">${I.trash}</button>
+    </div>
+  </div>`;
+    }
+
+    function viewEventDetail(id) {
+      const e = DB.read('events', []).find(x => x.id === id);
+      if (!e) return emptyState('Event not found', 'It may have been deleted.', 'Back to events', "go('/events')");
+      const cat = CATS[e.category];
+      const apps = DB.read('apps', []).filter(a => a.eventId === id);
+      const fields = allFieldsFor(e);
+      const minutes = e.category === 'staff_meeting';
+      return `
+  <a class="btn ghost sm no-print" href="#/events" style="margin-bottom:14px">← All events</a>
+  <div class="grid" style="grid-template-columns:1fr 300px">
+    <div class="panel">
+      <div class="ph"><div><div class="cat" style="color:${cat.color};font-size:11px;font-weight:700;text-transform:uppercase">${cat.icon} ${cat.label}</div>
+        <h2 style="margin-top:4px">${esc(e.title)}</h2></div><div class="spacer"></div>
+        <button class="btn ghost sm" onclick="openEventModal(null,'${e.id}')">Edit</button></div>
+      <div class="pb">
+        ${e.description ? `<p style="margin-top:0;color:var(--ink-2)">${esc(e.description)}</p>` : ''}
+        <div class="meta" style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted)">
+          <span>📆 ${fmtDate(e.date)}</span>${e.location ? `<span>📍 ${esc(e.location)}</span>` : ''}<span>🧩 ${fields.length} fields</span></div>
+        ${minutes && e.minutes ? `<div class="divider"></div><div class="subhead">Meeting minutes</div><p style="white-space:pre-wrap;margin:0">${esc(e.minutes)}</p>` : ''}
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><h2>Registration QR</h2></div>
+      <div class="pb"><div class="qrbox"><div id="qrInline"></div>
+        <button class="btn subtle block sm" onclick="downloadQR('${e.id}')">⬇ Download QR</button>
+        <p class="hint" style="text-align:center">People scan this to ${e.category === 'staff_meeting' || e.category === 'club_meeting' ? 'mark attendance' : 'register'}.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px">
+    <div class="ph"><h2>Entries</h2><span class="chip muted">${apps.length}</span><div class="spacer"></div>
+      <button class="btn ghost sm" onclick="openEntryModal('${e.id}')">+ Add manually</button>
+      <button class="btn ghost sm" onclick="exportEntries('${e.id}')">⬇ Export Excel</button>
+    </div>
+    <div class="pb flush">${entriesTable(e, apps)}</div>
+  </div>`;
+    }
+    function entriesTable(e, apps) {
+      if (!apps.length) return emptyState('No entries yet', 'Share the QR code or add an entry manually.', 'Add entry', `openEntryModal('${e.id}')`);
+      const extra = (e.fields || []).slice(0, 2);
+      return `<div class="tablewrap"><table class="tbl"><thead><tr>
+    <th>Name</th><th>Contact</th>${extra.map(f => `<th>${esc(f.label)}</th>`).join('')}
+    ${e.category !== 'college_event' ? '<th>Attendance</th>' : ''}<th>Logged</th><th></th></tr></thead><tbody>
+    ${apps.map(a => `<tr>
+      <td><div class="name">${esc(a.data.f_name || '—')}</div><div class="sub">${esc(a.data.f_phone || '')}</div></td>
+      <td class="sub">${esc(a.data.f_email || '—')}</td>
+      ${extra.map(f => `<td class="sub">${esc(a.data[f.id] || '—')}</td>`).join('')}
+      ${e.category !== 'college_event' ? `<td>${a.attendance === 'present' ? '<span class="chip ok"><span class="dot"></span>Present</span>' : a.attendance === 'absent' ? '<span class="chip bad">Absent</span>' : '<button class="btn sm subtle" onclick="markAtt(\'' + a.id + '\')">Mark present</button>'}</td>` : ''}
+      <td class="sub" title="Created ${fmtDT(a.createdAt)}\nUpdated ${fmtDT(a.updatedAt)}">${fmtDT(a.updatedAt)}</td>
+      <td><div class="rowacts">
+        <button class="iconbtn" title="Time log" onclick="showLog('${a.id}')">🕘</button>
+        <button class="iconbtn" title="Edit" onclick="openEntryModal('${e.id}','${a.id}')">✎</button>
+        <button class="iconbtn" title="Delete" onclick="askDeleteEntry('${a.id}')">${I.trash}</button>
+      </div></td></tr>`).join('')}
+  </tbody></table></div>`;
+    }
+
+    /* ============================ ENTRANCE ============================ */
+    function entranceEvents() { return DB.read('events', []).filter(e => e.category === 'entrance_exam'); }
+    function viewEntrance() {
+      const evs = entranceEvents();
+      if (!evs.length) return panelWrap('Entrance exams', emptyState('No entrance exams yet', 'Create an entrance exam, add programs and custom fields, then publish its QR for applications.', 'New entrance exam', "openEventModal('entrance_exam')"));
+      return `<div class="cardgrid">${evs.map(e => {
+        const apps = DB.read('apps', []).filter(a => a.eventId === e.id);
+        const pend = apps.filter(a => a.status === 'submitted').length;
+        return `<div class="panel eventcard">
+      <div class="top"><div class="cat" style="color:${CATS.entrance_exam.color}">📝 Entrance Exam</div>
+        <h3>${esc(e.title)}</h3>
+        <div class="meta"><span>📆 ${fmtDate(e.date)}</span><span>🎚 ${(e.programs || []).length} programs</span><span>👥 ${apps.length} applied</span></div></div>
+      <div class="bot"><button class="btn primary sm" onclick="go('/entrance/${e.id}')">Manage</button>
+        <button class="btn ghost sm" onclick="showQR('${e.id}')">QR code</button>
+        ${pend ? `<span class="chip warn" style="margin-left:auto"><span class="dot"></span>${pend} pending</span>` : ''}</div>
+    </div>`;
+      }).join('')}</div>`;
+    }
+
+    function viewEntranceDetail(id) {
+      const e = DB.read('events', []).find(x => x.id === id);
+      if (!e || e.category !== 'entrance_exam') return emptyState('Entrance exam not found', '', 'Back', "go('/entrance')");
+      const apps = DB.read('apps', []).filter(a => a.eventId === id);
+      const tab = (sessionTab() || 'apps');
+      return `
+  <a class="btn ghost sm no-print" href="#/entrance" style="margin-bottom:14px">← All entrance exams</a>
+  <div class="grid" style="grid-template-columns:1fr 300px">
+    <div class="panel"><div class="ph"><div><div class="cat" style="color:${CATS.entrance_exam.color};font-size:11px;font-weight:700;text-transform:uppercase">📝 Entrance Exam</div>
+      <h2 style="margin-top:4px">${esc(e.title)}</h2></div><div class="spacer"></div>
+      <button class="btn ghost sm" onclick="openEventModal(null,'${e.id}')">Edit</button></div>
+      <div class="pb">
+        <div class="meta" style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted)">
+          <span>📆 Exam: ${fmtDate(e.date)}</span><span>📍 ${esc(e.location || '—')}</span></div>
+        <div class="divider"></div>
+        <div class="subhead">Programs &amp; their fields</div>
+        ${(e.programs || []).length ? e.programs.map(p => `<div style="border:1px solid var(--line-2);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+          <b>${esc(p.name)}</b> <span class="chip brand" style="margin-left:6px">${(p.fields || []).length} extra fields</span>
+          ${(p.fields || []).length ? `<div class="hint">${p.fields.map(f => esc(f.label)).join(' · ')}</div>` : ''}</div>`).join('')
+          : '<p class="hint" style="margin:0">No programs added. Edit the exam to add programs like “BSc CSIT”, “BBA”, each with their own fields.</p>'}
+      </div>
+    </div>
+    <div class="panel"><div class="ph"><h2>Application QR</h2></div>
+      <div class="pb"><div class="qrbox"><div id="qrInline"></div>
+      <button class="btn subtle block sm" onclick="downloadQR('${e.id}')">⬇ Download QR</button>
+      <p class="hint" style="text-align:center">Applicants scan to apply. After approval they re-scan &amp; log in (DOB + symbol).</p></div></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px">
+    <div class="ph"><h2>Applicants</h2><span class="chip muted">${apps.length}</span><div class="spacer"></div>
+      <button class="btn ghost sm" onclick="exportAttendanceSheet('${e.id}')">⬇ Attendance sheet</button>
+      <label class="btn ghost sm" style="margin:0">⬆ Import attendance<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importAttendance('${e.id}',this)"></label>
+    </div>
+    <div class="pb" style="padding-bottom:0"><div class="tabs">
+      <button class="${tab === 'apps' ? 'active' : ''}" onclick="setTab('apps')">All (${apps.length})</button>
+      <button class="${tab === 'pending' ? 'active' : ''}" onclick="setTab('pending')">Pending (${apps.filter(a => a.status === 'submitted').length})</button>
+      <button class="${tab === 'approved' ? 'active' : ''}" onclick="setTab('approved')">Approved (${apps.filter(a => ['approved', 'admit_issued', 'present', 'absent', 'result'].includes(a.status)).length})</button>
+      <button class="${tab === 'results' ? 'active' : ''}" onclick="setTab('results')">Results (${apps.filter(a => a.status === 'result').length})</button>
+    </div></div>
+    <div class="pb flush">${entranceTable(e, apps, tab)}</div>
+  </div>`;
+    }
+    function sessionTab() { return DB.read('uiTab', null); }
+    function setTab(t) { DB.write('uiTab', t); render(); }
+    function entranceTable(e, apps, tab) {
+      let rows = apps;
+      if (tab === 'pending') rows = apps.filter(a => a.status === 'submitted');
+      if (tab === 'approved') rows = apps.filter(a => ['approved', 'admit_issued', 'present', 'absent', 'result'].includes(a.status));
+      if (tab === 'results') rows = apps.filter(a => a.status === 'result');
+      if (!rows.length) return emptyState('Nothing here yet', 'Applications submitted via the QR form will show up here.', '', null);
+      return `<div class="tablewrap"><table class="tbl"><thead><tr>
+    <th>Applicant</th><th>Program</th><th>Symbol</th><th>Status</th><th>Result</th><th></th></tr></thead><tbody>
+    ${rows.map(a => {
+        const st = STATUS[a.status] || { label: a.status, chip: 'muted' };
+        return `<tr>
+      <td><div class="name">${esc(a.data.f_name || '—')}</div><div class="sub">DOB ${esc(a.dob || a.data.f_dob || '—')}</div></td>
+      <td>${esc(a.program || '—')}</td>
+      <td>${a.symbol ? `<span class="chip brand">${esc(a.symbol)}</span>` : '<span class="sub">—</span>'}</td>
+      <td><span class="chip ${st.chip}"><span class="dot"></span>${st.label}</span></td>
+      <td>${a.result ? `<b>${esc(a.result.outcome)}</b> <span class="sub">${a.result.marks != null ? a.result.marks : ''}${a.result.rank ? (' · Rank ' + a.result.rank) : ''}</span>` : '<span class="sub">—</span>'}</td>
+      <td><div class="rowacts">
+        ${a.status === 'submitted' ? `<button class="btn sm primary" onclick="approveApplicant('${a.id}')">Approve</button>
+          <button class="btn sm ghost" onclick="rejectApplicant('${a.id}')">Reject</button>` : ''}
+        ${['approved', 'admit_issued', 'present', 'absent', 'result'].includes(a.status) ? `<button class="btn sm subtle" onclick="showAdmit('${a.id}')">Admit card</button>` : ''}
+        ${['approved', 'admit_issued', 'present', 'absent'].includes(a.status) ? `<button class="btn sm ghost" onclick="publishResult('${a.id}')">Result</button>` : ''}
+        <button class="iconbtn" title="Time log" onclick="showLog('${a.id}')">🕘</button>
+        <button class="iconbtn" title="Delete" onclick="askDeleteEntry('${a.id}')">${I.trash}</button>
+      </div></td></tr>`;
+      }).join('')}
+  </tbody></table></div>`;
+    }
+
+    /* ============================ ATTENDANCE ============================ */
+    function viewAttendance() {
+      const evs = DB.read('events', []).filter(e => e.category !== 'college_event');
+      const apps = DB.read('apps', []);
+      return `
+  <div class="panel"><div class="ph"><h2>Attendance by event</h2><div class="spacer"></div>
+    <span class="hint">Export a sheet, collect signatures, then import it back to mark attendance.</span></div>
+    <div class="pb flush">
+    ${!evs.length ? emptyState('No attendance-tracking events', 'Entrance exams, club &amp; staff meetings track attendance.', '', null) :
+          `<div class="tablewrap"><table class="tbl"><thead><tr><th>Event</th><th>Type</th><th>Registered</th><th>Present</th><th>Sheet</th></tr></thead><tbody>
+      ${evs.map(e => {
+            const list = apps.filter(a => a.eventId === e.id); const pres = list.filter(a => a.attendance === 'present').length;
+            const isExam = e.category === 'entrance_exam';
+            return `<tr><td class="name">${esc(e.title)}</td><td><span class="chip muted">${CATS[e.category].label}</span></td>
+        <td>${list.length}</td><td>${pres ? `<span class="chip ok">${pres}</span>` : '<span class="sub">0</span>'}</td>
+        <td><div class="rowacts" style="justify-content:flex-start">
+          <button class="btn sm ghost" onclick="${isExam ? `exportAttendanceSheet('${e.id}')` : `exportEntries('${e.id}')`}">⬇ Export</button>
+          <label class="btn sm ghost" style="margin:0">⬆ Import<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importAttendance('${e.id}',this)"></label>
+        </div></td></tr>`;
+          }).join('')}
+      </tbody></table></div>`}
+    </div>
+  </div>
+  <p class="hint" style="margin-top:14px">Tip — for entrance exams, the attendance sheet groups applicants by program. Import matches rows by <b>Symbol No</b> and sets a “Present” value of <b>yes/1/present</b>.</p>`;
+    }
+
+    /* ============================ TRASH (TRACE) ============================ */
+    function viewTrash() {
+      const trash = DB.read('trash', []);
+      return `<div class="panel"><div class="ph"><h2>Trash &amp; trace</h2><span class="chip muted">${trash.length}</span><div class="spacer"></div>
+    ${trash.length ? `<button class="btn danger sm" onclick="emptyTrash()">Empty trash permanently</button>` : ''}</div>
+    <div class="pb flush">
+    ${!trash.length ? emptyState('Trash is empty', 'Deleted events and entries are kept here as a trace until you restore or permanently remove them.', '', null) :
+          `<div class="tablewrap"><table class="tbl"><thead><tr><th>Item</th><th>Type</th><th>Deleted</th><th></th></tr></thead><tbody>
+      ${trash.map(t => `<tr>
+        <td class="name">${esc(t.label)}</td>
+        <td><span class="chip muted">${t.kind === 'event' ? 'Event' : 'Entry'}</span></td>
+        <td class="sub">${fmtDT(t.deletedAt)}</td>
+        <td><div class="rowacts">
+          <button class="btn sm subtle" onclick="restoreTrash('${t.id}')">Restore</button>
+          <button class="btn sm danger" onclick="purgeTrash('${t.id}')">Delete permanently</button>
+        </div></td></tr>`).join('')}
+    </tbody></table></div>`}
+    </div></div>
+  <p class="hint" style="margin-top:14px">Every deletion is confirmed first, stored here as a recoverable trace, and only erased for good when you choose “Delete permanently”.</p>`;
+    }
+
+    /* ============================ SETTINGS ============================ */
+    function viewSettings() {
+      const admin = DB.read('admin', {});
+      return `<div class="grid" style="grid-template-columns:1fr 1fr">
+    <div class="panel"><div class="ph"><h2>Admin account</h2></div><div class="pb">
+      <div class="field"><label>Display name</label><input class="input" id="setName" value="${esc(admin.name || '')}"></div>
+      <div class="field"><label>Username</label><input class="input" id="setUser" value="${esc(admin.username || '')}"></div>
+      <div class="field"><label>Password</label><input class="input" id="setPass" type="text" value="${esc(admin.password || '')}"></div>
+      <button class="btn primary" onclick="saveAdmin()">Save changes</button>
+    </div></div>
+    <div class="panel"><div class="ph"><h2>Data</h2></div><div class="pb">
+      <p class="hint" style="margin-top:0">All data is stored in this browser only (localStorage). Export a backup or reset everything.</p>
+      <button class="btn ghost block" style="margin-bottom:10px" onclick="exportBackup()">⬇ Export backup (JSON)</button>
+      <label class="btn ghost block" style="margin-bottom:10px">⬆ Import backup<input type="file" accept=".json" style="display:none" onchange="importBackup(this)"></label>
+      <button class="btn danger block" onclick="resetAll()">Reset all data</button>
+    </div></div>
+  </div>`;
+    }
+    function saveAdmin() { const a = DB.read('admin', {}); a.name = $('#setName').value.trim() || 'Administrator'; a.username = $('#setUser').value.trim() || 'admin'; a.password = $('#setPass').value || 'admin123'; DB.write('admin', a); toast('Settings saved', 'ok'); render(); }
+    function exportBackup() {
+      const data = { admin: DB.read('admin', {}), events: DB.read('events', []), apps: DB.read('apps', []), trash: DB.read('trash', []) };
+      dl('campus-desk-backup.json', new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); toast('Backup downloaded', 'ok');
+    }
+    function importBackup(inp) {
+      const f = inp.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => {
+        try {
+          const d = JSON.parse(r.result);
+          if (d.events) DB.write('events', d.events); if (d.apps) DB.write('apps', d.apps); if (d.trash) DB.write('trash', d.trash); if (d.admin) DB.write('admin', d.admin);
+          toast('Backup imported', 'ok'); render();
+        } catch (e) { toast('Invalid backup file', 'bad'); }
+      }; r.readAsText(f); inp.value = '';
+    }
+    function resetAll() { confirmDelete({ title: 'Reset all data?', body: 'This permanently erases every event, registration and the trash. This cannot be undone.', confirmText: 'Reset everything', onYes: () => { ['events', 'apps', 'trash'].forEach(k => DB.write(k, [])); toast('All data reset', 'warn'); go('/'); render(); } }); }
+
+    /* ============================ EVENT CREATE / EDIT MODAL ============================ */
+    let draft = null; // {fields:[], programs:[]}
+    function openEventModal(presetCat = null, editId = null) {
+      window.__editId = editId;
+      const editing = editId ? DB.read('events', []).find(e => e.id === editId) : null;
+      draft = {
+        fields: editing ? JSON.parse(JSON.stringify(editing.fields || [])) : [],
+        programs: editing ? JSON.parse(JSON.stringify(editing.programs || [])) : [],
+      };
+      const cat = editing ? editing.category : (presetCat || 'college_event');
+      modal(`<div class="mh"><div><h2>${editing ? 'Edit event' : 'Create event'}</h2><p>Common fields (name, email, phone) are always included. Add anything else below.</p></div><button class="x" data-x>×</button></div>
+  <div class="mb" id="evBody">
+    <div class="field"><label>Category</label>
+      <select class="input" id="evCat" onchange="onCatChange()" ${editing ? 'disabled' : ''}>
+        ${Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === cat ? 'selected' : ''}>${v.icon} ${v.label}</option>`).join('')}
+      </select></div>
+    <div class="field"><label>Title <span class="req">*</span></label><input class="input" id="evTitle" value="${esc(editing?.title || '')}" placeholder="e.g. BSc CSIT Entrance 2026"></div>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div class="field"><label>Date</label><input class="input" type="date" id="evDate" value="${editing?.date ? editing.date.slice(0, 10) : ''}"></div>
+      <div class="field"><label>Location</label><input class="input" id="evLoc" value="${esc(editing?.location || '')}" placeholder="Hall / room / online"></div>
+    </div>
+    <div class="field"><label>Description</label><textarea class="input" id="evDesc" placeholder="Short description shown on the public form">${esc(editing?.description || '')}</textarea></div>
+    <div id="catExtra"></div>
+    <div class="divider"></div>
+    <div class="subhead">Custom registration fields <span class="hint" style="text-transform:none;letter-spacing:0;font-weight:400">— in addition to name / email / phone</span></div>
+    <div id="fieldList"></div>
+    <button class="btn ghost sm" onclick="addDraftField()">+ Add field</button>
+  </div>
+  <div class="mf"><button class="btn ghost" data-x>Cancel</button>
+    <button class="btn primary" onclick="saveEvent('${editId || ''}')">${editing ? 'Save changes' : 'Create event'}</button></div>`, { lg: true });
+      onCatChange(); renderDraftFields();
+    }
+    function onCatChange() {
+      const cat = $('#evCat').value; const box = $('#catExtra'); box.innerHTML = '';
+      if (cat === 'entrance_exam') {
+        box.innerHTML = `<div class="divider"></div><div class="subhead">Programs (applicants pick one; each can have its own fields)</div>
+      <div id="progList"></div><button class="btn ghost sm" onclick="addProgram()">+ Add program</button>`;
+        renderPrograms();
+      } else if (cat === 'staff_meeting') {
+        box.innerHTML = `<div class="divider"></div><div class="field"><label>Meeting minutes</label>
+      <textarea class="input" id="evMinutes" placeholder="Agenda, decisions, action items…">${esc((DB.read('events', []).find(e => e.id === window.__editId) || {}).minutes || '')}</textarea></div>`;
+      }
+    }
+    /* draft custom fields */
+    function addDraftField() { draft.fields.push({ id: uid('f'), label: '', type: 'text', required: false, options: '' }); renderDraftFields(); }
+    function renderDraftFields() {
+      const box = $('#fieldList'); if (!box) return;
+      box.innerHTML = draft.fields.length ? draft.fields.map((f, i) => fieldRow(f, i, 'draft')).join('') : `<p class="hint" style="margin:0 0 8px">No custom fields yet.</p>`;
+    }
+    function fieldRow(f, i, scope) {
+      return `<div class="fieldrow">
+    <div class="field"><label>Field label</label><input class="input" value="${esc(f.label)}" oninput="updField('${scope}',${i},'label',this.value)" placeholder="e.g. Citizenship No"></div>
+    <div class="field"><label>Type</label><select class="input" onchange="updField('${scope}',${i},'type',this.value)">
+      ${['text', 'number', 'date', 'email', 'tel', 'select', 'file', 'textarea'].map(t => `<option ${t === f.type ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Required</label><select class="input" onchange="updField('${scope}',${i},'required',this.value==='yes')">
+      <option value="no" ${!f.required ? 'selected' : ''}>No</option><option value="yes" ${f.required ? 'selected' : ''}>Yes</option></select></div>
+    <button class="iconbtn" title="Remove" onclick="rmField('${scope}',${i})">✕</button>
+    ${f.type === 'select' ? `<div class="field" style="grid-column:1/-1"><label>Options (comma separated)</label><input class="input" value="${esc(f.options || '')}" oninput="updField('${scope}',${i},'options',this.value)" placeholder="Option A, Option B"></div>` : ''}
+  </div>`;
+    }
+    let progScope = {}; // index -> for program fields we use scope 'prog:<pi>'
+    function updField(scope, i, key, val) {
+      if (scope === 'draft') { draft.fields[i][key] = val; if (key === 'type') renderDraftFields(); }
+      else if (scope.startsWith('prog:')) { const pi = +scope.split(':')[1]; draft.programs[pi].fields[i][key] = val; if (key === 'type') renderPrograms(); }
+    }
+    function rmField(scope, i) {
+      if (scope === 'draft') { draft.fields.splice(i, 1); renderDraftFields(); }
+      else if (scope.startsWith('prog:')) { const pi = +scope.split(':')[1]; draft.programs[pi].fields.splice(i, 1); renderPrograms(); }
+    }
+    /* programs */
+    function addProgram() { draft.programs.push({ id: uid('p'), name: '', fields: [] }); renderPrograms(); }
+    function renderPrograms() {
+      const box = $('#progList'); if (!box) return;
+      box.innerHTML = draft.programs.length ? draft.programs.map((p, pi) => `
+    <div style="border:1px solid var(--line);border-radius:11px;padding:12px;margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:end">
+        <div class="field" style="flex:1;margin:0"><label>Program name</label><input class="input" value="${esc(p.name)}" oninput="setProgName(${pi},this.value)" placeholder="e.g. BSc CSIT"></div>
+        <button class="iconbtn" title="Remove program" onclick="rmProgram(${pi})">✕</button>
+      </div>
+      <div style="margin-top:10px" class="subhead">Fields shown when this program is selected</div>
+      <div id="progFields_${pi}">${(p.fields || []).map((f, i) => fieldRow(f, i, 'prog:' + pi)).join('') || '<p class="hint" style="margin:0 0 8px">No extra fields.</p>'}</div>
+      <button class="btn ghost sm" onclick="addProgField(${pi})">+ Add field</button>
+    </div>`).join('') : '<p class="hint" style="margin:0 0 8px">No programs yet.</p>';
+    }
+    function setProgName(pi, v) { draft.programs[pi].name = v; }
+    function rmProgram(pi) { draft.programs.splice(pi, 1); renderPrograms(); }
+    function addProgField(pi) { draft.programs[pi].fields.push({ id: uid('f'), label: '', type: 'text', required: false, options: '' }); renderPrograms(); }
+
+    function saveEvent(editId) {
+      const title = $('#evTitle').value.trim(); if (!title) { toast('Please add a title', 'bad'); return; }
+      const cat = $('#evCat').value;
+      const events = DB.read('events', []);
+      const base = {
+        title, category: cat,
+        date: $('#evDate').value || null, location: $('#evLoc').value.trim(),
+        description: $('#evDesc').value.trim(),
+        fields: draft.fields.filter(f => f.label.trim()).map(f => ({ ...f, options: f.type === 'select' ? (f.options || '') : undefined })),
+        programs: cat === 'entrance_exam' ? draft.programs.filter(p => p.name.trim()).map(p => ({ ...p, fields: (p.fields || []).filter(f => f.label.trim()) })) : [],
+        minutes: cat === 'staff_meeting' ? ($('#evMinutes')?.value || '') : '',
+      };
+      if (editId) { const idx = events.findIndex(e => e.id === editId); events[idx] = { ...events[idx], ...base }; toast('Event updated', 'ok'); }
+      else { events.push({ id: uid('ev'), ...base, createdAt: nowISO() }); toast('Event created', 'ok'); }
+      DB.write('events', events); closeModal(); render();
+    }
+
+    /* ============================ ENTRY (registration) CRUD ============================ */
+    function allFieldsFor(e, program) {
+      let f = [...COMMON_FIELDS, { id: 'f_dob', label: 'Date of Birth', type: 'date', required: e.category === 'entrance_exam' }, ...(e.fields || [])];
+      if (e.category === 'entrance_exam' && program) { const p = (e.programs || []).find(p => p.name === program); if (p) f = [...f, ...(p.fields || [])]; }
+      return f;
+    }
+    function openEntryModal(eventId, entryId = null) {
+      const e = DB.read('events', []).find(x => x.id === eventId);
+      const entry = entryId ? DB.read('apps', []).find(a => a.id === entryId) : null;
+      const program = entry?.program || ((e.programs || [])[0]?.name) || '';
+      const fields = allFieldsFor(e, program);
+      modal(`<div class="mh"><div><h2>${entry ? 'Edit entry' : 'Add entry'}</h2><p>${esc(e.title)}</p></div><button class="x" data-x>×</button></div>
+    <div class="mb">
+      ${e.category === 'entrance_exam' && (e.programs || []).length ? `<div class="field"><label>Program</label>
+        <select class="input" id="enProg" onchange="reopenEntry('${eventId}','${entryId || ''}',this.value)">
+        ${e.programs.map(p => `<option ${p.name === program ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>` : ''}
+      ${fields.map(f => renderInput(f, entry?.data?.[f.id])).join('')}
+    </div>
+    <div class="mf"><button class="btn ghost" data-x>Cancel</button>
+      <button class="btn primary" onclick="saveEntry('${eventId}','${entryId || ''}','${program}')">${entry ? 'Save' : 'Add entry'}</button></div>`);
+    }
+    function reopenEntry(eventId, entryId, program) { // re-render fields for a different program
+      const e = DB.read('events', []).find(x => x.id === eventId);
+      const entry = entryId ? DB.read('apps', []).find(a => a.id === entryId) : null;
+      const fields = allFieldsFor(e, program);
+      const body = $('.modal .mb');
+      body.innerHTML = `<div class="field"><label>Program</label><select class="input" id="enProg" onchange="reopenEntry('${eventId}','${entryId}',this.value)">
+    ${e.programs.map(p => `<option ${p.name === program ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+    ${fields.map(f => renderInput(f, entry?.data?.[f.id])).join('')}`;
+      $('.modal .mf .primary').setAttribute('onclick', `saveEntry('${eventId}','${entryId}','${program}')`);
+    }
+    function renderInput(f, val = '') {
+      const req = f.required ? ' <span class="req">*</span>' : '';
+      const name = 'fld_' + f.id;
+      if (f.type === 'textarea') return `<div class="field"><label>${esc(f.label)}${req}</label><textarea class="input" data-fid="${f.id}">${esc(val)}</textarea></div>`;
+      if (f.type === 'select') {
+        const opts = (f.options || '').split(',').map(o => o.trim()).filter(Boolean);
+        return `<div class="field"><label>${esc(f.label)}${req}</label><select class="input" data-fid="${f.id}"><option value="">Select…</option>${opts.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`;
+      }
+      if (f.type === 'file') return `<div class="field"><label>${esc(f.label)}${req}</label><input type="file" class="input" data-fid="${f.id}" data-file="1"><div class="hint">Stored as file name (demo). ${val ? ('Current: ' + esc(val)) : ''}</div></div>`;
+      const t = ({ email: 'email', tel: 'tel', number: 'number', date: 'date' })[f.type] || 'text';
+      return `<div class="field"><label>${esc(f.label)}${req}</label><input class="input" type="${t}" data-fid="${f.id}" value="${esc(val)}"></div>`;
+    }
+    function collectInputs(scopeEl) {
+      const data = {};
+      $$('[data-fid]', scopeEl).forEach(el => { if (el.dataset.file) { data[el.dataset.fid] = el.files[0] ? el.files[0].name : (el.dataset.cur || ''); } else data[el.dataset.fid] = el.value; });
+      return data;
+    }
+    function saveEntry(eventId, entryId, program) {
+      const e = DB.read('events', []).find(x => x.id === eventId);
+      const prog = $('#enProg')?.value || program;
+      const fields = allFieldsFor(e, prog);
+      const data = collectInputs($('.modal'));
+      for (const f of fields) { if (f.required && !String(data[f.id] || '').trim() && f.type !== 'file') { toast('Please fill: ' + f.label, 'bad'); return; } }
+      const apps = DB.read('apps', []);
+      if (entryId) {
+        const a = apps.find(x => x.id === entryId); a.data = { ...a.data, ...data }; a.program = prog; a.dob = data.f_dob || a.dob; a.updatedAt = nowISO();
+        a.logs.push({ at: nowISO(), action: 'Edited by admin' }); toast('Entry updated', 'ok');
+      }
+      else { apps.push(newApplicant(e, data, prog, 'admin')); toast('Entry added', 'ok'); }
+      DB.write('apps', apps); closeModal(); render();
+    }
+    function newApplicant(e, data, program, by) {
+      return {
+        id: uid('ap'), eventId: e.id, category: e.category, program: program || '',
+        data, dob: data.f_dob || '', symbol: '',
+        status: e.category === 'entrance_exam' ? 'submitted' : 'submitted',
+        attendance: null, result: null,
+        logs: [{ at: nowISO(), action: (by === 'admin' ? 'Added by admin' : 'Submitted via QR form') }],
+        createdAt: nowISO(), updatedAt: nowISO()
+      };
+    }
+    function markAtt(id) {
+      const apps = DB.read('apps', []); const a = apps.find(x => x.id === id); a.attendance = 'present'; a.updatedAt = nowISO();
+      a.logs.push({ at: nowISO(), action: 'Marked present' }); DB.write('apps', apps); toast('Marked present', 'ok'); render();
+    }
+
+    /* ----- entrance workflow ----- */
+    function approveApplicant(id) {
+      const apps = DB.read('apps', []); const a = apps.find(x => x.id === id); const e = DB.read('events', []).find(x => x.id === a.eventId);
+      // assign symbol number
+      const yr = new Date().getFullYear(); const n = apps.filter(x => x.eventId === a.eventId && x.symbol).length + 1;
+      a.symbol = `${(e.title.match(/[A-Z]/g) || ['E', 'X']).slice(0, 2).join('') || 'EX'}-${yr}-${String(n).padStart(4, '0')}`;
+      a.status = 'approved'; a.updatedAt = nowISO(); a.logs.push({ at: nowISO(), action: 'Approved · symbol ' + a.symbol + ' assigned' });
+      DB.write('apps', apps);
+      modal(`<div class="mh"><div><h2>Applicant approved ✓</h2><p>Share these login credentials with the applicant.</p></div><button class="x" data-x>×</button></div>
+    <div class="mb"><div class="card" style="background:var(--brand-tint-2)">
+      <dl style="display:grid;grid-template-columns:120px 1fr;gap:8px;margin:0;font-size:14px">
+      <dt style="color:var(--muted)">Username (DOB)</dt><dd><b>${esc(a.dob || '—')}</b></dd>
+      <dt style="color:var(--muted)">Password (Symbol)</dt><dd><b>${esc(a.symbol)}</b></dd></dl></div>
+      <p class="hint">When the applicant re-scans the QR code they log in with these to download their admit card. Admit card &amp; result will then be available to them.</p></div>
+    <div class="mf"><button class="btn ghost" data-x>Close</button><button class="btn primary" onclick="closeModal();showAdmit('${a.id}')">View admit card</button></div>`);
+      render();
+    }
+    function rejectApplicant(id) {
+      const apps = DB.read('apps', []); const a = apps.find(x => x.id === id); a.status = 'rejected'; a.updatedAt = nowISO();
+      a.logs.push({ at: nowISO(), action: 'Rejected' }); DB.write('apps', apps); toast('Applicant rejected', 'warn'); render();
+    }
+
+    function publishResult(id) {
+      const apps = DB.read('apps', []); const a = apps.find(x => x.id === id);
+      modal(`<div class="mh"><div><h2>Publish result</h2><p>${esc(a.data.f_name || '')} · ${esc(a.symbol || '')}</p></div><button class="x" data-x>×</button></div>
+    <div class="mb">
+      <div class="field"><label>Outcome</label><select class="input" id="rOut"><option>Pass</option><option>Fail</option><option>Waitlist</option></select></div>
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <div class="field"><label>Marks / Score</label><input class="input" id="rMarks" type="number" placeholder="e.g. 78"></div>
+        <div class="field"><label>Rank (optional)</label><input class="input" id="rRank" type="number" placeholder="e.g. 12"></div>
+      </div>
+      <div class="field"><label>Remarks</label><input class="input" id="rRem" placeholder="Optional note shown to applicant"></div>
+    </div>
+    <div class="mf"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" onclick="saveResult('${id}')">Publish</button></div>`);
+    }
+    function saveResult(id) {
+      const apps = DB.read('apps', []); const a = apps.find(x => x.id === id);
+      a.result = { outcome: $('#rOut').value, marks: $('#rMarks').value ? Number($('#rMarks').value) : null, rank: $('#rRank').value ? Number($('#rRank').value) : null, remarks: $('#rRem').value };
+      a.status = 'result'; a.updatedAt = nowISO(); a.logs.push({ at: nowISO(), action: 'Result published: ' + a.result.outcome });
+      DB.write('apps', apps); closeModal(); toast('Result published', 'ok'); render();
+    }
+
+    /* ----- time log ----- */
+    function showLog(id) {
+      const a = DB.read('apps', []).find(x => x.id === id);
+      modal(`<div class="mh"><div><h2>Time log</h2><p>${esc(a.data.f_name || 'Entry')} — full activity trail</p></div><button class="x" data-x>×</button></div>
+    <div class="mb"><div class="tl">${[...a.logs].reverse().map((l, i) => `<div class="it ${i === 0 ? 'done' : ''}"><div class="t">${esc(l.action)}</div><div class="d">${fmtDT(l.at)}</div></div>`).join('')}</div></div>
+    <div class="mf"><button class="btn primary" data-x>Close</button></div>`);
+    }
+
+    /* ----- admit card ----- */
+    function showAdmit(id) {
+      const a = DB.read('apps', []).find(x => x.id === id); const e = DB.read('events', []).find(x => x.id === a.eventId);
+      if (a.status === 'approved') {
+        a.status = 'admit_issued'; a.logs.push({ at: nowISO(), action: 'Admit card issued' }); a.updatedAt = nowISO();
+        const apps = DB.read('apps', []); const idx = apps.findIndex(x => x.id === id); apps[idx] = a; DB.write('apps', apps);
+      }
+      modal(`<div class="mh"><div><h2>Admit card</h2><p>Print or save as PDF</p></div><button class="x no-print" data-x>×</button></div>
+    <div class="mb"><div class="admit" id="admitCard">
+      <div class="ah"><div class="logo">C</div><div><b style="font-family:var(--font-d);font-size:16px">${esc(e.title)}</b><div style="font-size:12px;opacity:.9">Entrance Examination · Admit Card</div></div></div>
+      <div class="ab">
+        <dl><dt>Name</dt><dd>${esc(a.data.f_name || '—')}</dd>
+          <dt>Symbol No</dt><dd>${esc(a.symbol || '—')}</dd>
+          <dt>Program</dt><dd>${esc(a.program || '—')}</dd>
+          <dt>Date of Birth</dt><dd>${esc(a.dob || '—')}</dd>
+          <dt>Exam date</dt><dd>${fmtDate(e.date)}</dd>
+          <dt>Venue</dt><dd>${esc(e.location || 'To be announced')}</dd></dl>
+        <div class="seal"><div id="admitQR"></div><div class="hint" style="text-align:center">Scan to verify</div></div>
+      </div>
+    </div></div>
+    <div class="mf no-print"><button class="btn ghost" data-x>Close</button><button class="btn primary" onclick="window.print()">🖨 Print / Save PDF</button></div>`, { lg: true });
+      if (window.QRCode) { const c = document.createElement('canvas'); QRCode.toCanvas(c, a.symbol || a.id, { width: 110, margin: 1, color: { dark: '#0E7C7B', light: '#ffffff' } }, () => { }); $('#admitQR').appendChild(c); }
+      render(); // refresh table status
+    }
+
+    /* ============================ QR ============================ */
+    function eventURL(id) { return location.origin + location.pathname + '#/r/' + id; }
+    function showQR(id) {
+      const e = DB.read('events', []).find(x => x.id === id);
+      modal(`<div class="mh"><div><h2>QR code</h2><p>${esc(e.title)}</p></div><button class="x" data-x>×</button></div>
+    <div class="mb"><div class="qrbox"><div id="qrModal"></div>
+      <div class="hint" style="text-align:center;word-break:break-all">${esc(eventURL(id))}</div></div></div>
+    <div class="mf"><button class="btn ghost" data-x>Close</button>
+      <button class="btn subtle" onclick="closeModal();go('/r/${id}')">Open form ↗</button>
+      <button class="btn primary" onclick="downloadQR('${id}')">⬇ Download QR</button></div>`);
+      drawQR('#qrModal', id, 220);
+    }
+    function drawQR(sel, id, size) {
+      const box = $(sel); if (!box) return; box.innerHTML = '';
+      if (!window.QRCode) { box.innerHTML = '<p class="hint">QR library not loaded (needs internet on first load).</p>'; return; }
+      const c = document.createElement('canvas');
+      QRCode.toCanvas(c, eventURL(id), { width: size, margin: 2, color: { dark: '#0E7C7B', light: '#ffffff' } }, err => { if (err) box.innerHTML = '<p class="hint">Could not render QR.</p>'; });
+      box.appendChild(c);
+    }
+    function downloadQR(id) {
+      const e = DB.read('events', []).find(x => x.id === id);
+      if (!window.QRCode) { toast('QR library not loaded', 'bad'); return; }
+      const c = document.createElement('canvas');
+      QRCode.toCanvas(c, eventURL(id), { width: 640, margin: 3, color: { dark: '#0E7C7B', light: '#ffffff' } }, err => {
+        if (err) { toast('QR error', 'bad'); return; }
+        c.toBlob(b => { dl(`QR-${(e.title || 'event').replace(/\s+/g, '-')}.png`, b); toast('QR downloaded', 'ok'); });
+      });
+    }
+    // render inline QR after a detail page paints
+    function paintInlineQR() { const r = route(); const m = r.match(/^\/(events|entrance)\/(.+)/); if (m && $('#qrInline')) drawQR('#qrInline', m[2], 180); }
+
+    /* ============================ ATTENDANCE EXCEL ============================ */
+    function exportEntries(eventId) {
+      const e = DB.read('events', []).find(x => x.id === eventId);
+      const apps = DB.read('apps', []).filter(a => a.eventId === eventId);
+      if (!apps.length) { toast('No entries to export', 'warn'); return; }
+      const fieldsMeta = allFieldsFor(e);
+      const rows = apps.map(a => { const o = {}; fieldsMeta.forEach(f => o[f.label] = a.data[f.id] || ''); o['Attendance'] = a.attendance || ''; o['Submitted'] = fmtDT(a.createdAt); return o; });
+      sheetDownload(rows, `${(e.title || 'event').replace(/\s+/g, '-')}-entries.xlsx`, 'Entries');
+    }
+    function exportAttendanceSheet(eventId) {
+      const e = DB.read('events', []).find(x => x.id === eventId);
+      const apps = DB.read('apps', []).filter(a => a.eventId === eventId && ['approved', 'admit_issued', 'present', 'absent', 'result'].includes(a.status));
+      if (!apps.length) { toast('No approved applicants yet', 'warn'); return; }
+      // group/sort by program, build one workbook with a sheet per program
+      if (!window.XLSX) { toast('Excel library not loaded', 'bad'); return; }
+      const wb = XLSX.utils.book_new();
+      const byProg = {}; apps.forEach(a => { (byProg[a.program || 'General'] = byProg[a.program || 'General'] || []).push(a); });
+      Object.entries(byProg).forEach(([prog, list]) => {
+        const rows = list.sort((x, y) => (x.symbol || '').localeCompare(y.symbol || '')).map((a, i) => ({
+          'SN': i + 1, 'Symbol No': a.symbol, 'Name': a.data.f_name || '', 'DOB': a.dob || '', 'Program': prog, 'Signature': '', 'Present (yes/no)': ''
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows); ws['!cols'] = [{ wch: 5 }, { wch: 16 }, { wch: 24 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+        XLSX.utils.book_append_sheet(wb, ws, prog.slice(0, 28) || 'Sheet');
+      });
+      XLSX.writeFile(wb, `Attendance-${(e.title || 'exam').replace(/\s+/g, '-')}.xlsx`);
+      toast('Attendance sheet downloaded', 'ok');
+    }
+    function importAttendance(eventId, inp) {
+      const f = inp.files[0]; if (!f) return; if (!window.XLSX) { toast('Excel library not loaded', 'bad'); inp.value = ''; return; }
+      const r = new FileReader();
+      r.onload = ev => {
+        try {
+          const wb = XLSX.read(ev.target.result, { type: 'binary' }); let updated = 0;
+          const apps = DB.read('apps', []);
+          wb.SheetNames.forEach(sn => {
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn]);
+            rows.forEach(row => {
+              const sym = String(row['Symbol No'] || row['Symbol'] || row['symbol'] || '').trim();
+              const present = String(row['Present (yes/no)'] || row['Present'] || row['present'] || '').trim().toLowerCase();
+              if (!sym) return;
+              const a = apps.find(x => x.eventId === eventId && (x.symbol || '').toLowerCase() === sym.toLowerCase());
+              if (a) {
+                const val = ['yes', 'y', '1', 'present', 'true', 'p'].includes(present) ? 'present' : (present ? 'absent' : a.attendance);
+                if (val && val !== a.attendance) {
+                  a.attendance = val; a.status = val === 'present' ? 'present' : (a.status === 'result' ? 'result' : 'absent');
+                  a.updatedAt = nowISO(); a.logs.push({ at: nowISO(), action: 'Attendance imported: ' + val }); updated++;
+                }
+              }
+            });
+          });
+          DB.write('apps', apps);
+          toast(updated ? `Attendance updated for ${updated} applicant(s)` : 'No matching symbols found', updated ? 'ok' : 'warn');
+          render();
+        } catch (e) { toast('Could not read file', 'bad'); }
+      };
+      r.readAsBinaryString(f); inp.value = '';
+    }
+    function sheetDownload(rows, name, sheet = 'Sheet1') {
+      if (!window.XLSX) { toast('Excel library not loaded', 'bad'); return; }
+      const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, sheet);
+      XLSX.writeFile(wb, name); toast('Excel downloaded', 'ok');
+    }
+
+    /* ============================ DELETE → TRASH → PURGE ============================ */
+    function askDeleteEvent(id) {
+      const e = DB.read('events', []).find(x => x.id === id);
+      const n = DB.read('apps', []).filter(a => a.eventId === id).length;
+      confirmDelete({
+        title: 'Delete event?', body: `<b>${esc(e.title)}</b> and its ${n} entr${n === 1 ? 'y' : 'ies'} will be moved to Trash, where you can restore or permanently delete them.`,
+        confirmText: 'Move to Trash', onYes: () => {
+          const events = DB.read('events', []); const apps = DB.read('apps', []); const trash = DB.read('trash', []);
+          const relApps = apps.filter(a => a.eventId === id);
+          trash.unshift({ id: uid('tr'), kind: 'event', label: e.title, deletedAt: nowISO(), payload: { event: e, apps: relApps } });
+          DB.write('events', events.filter(x => x.id !== id));
+          DB.write('apps', apps.filter(a => a.eventId !== id));
+          DB.write('trash', trash); toast('Moved to Trash', 'warn');
+          go(e.category === 'entrance_exam' ? '/entrance' : '/events'); render();
+        }
+      });
+    }
+    function askDeleteEntry(id) {
+      const a = DB.read('apps', []).find(x => x.id === id);
+      confirmDelete({
+        title: 'Delete entry?', body: `<b>${esc(a.data.f_name || 'This entry')}</b> will be moved to Trash. You can restore it later or delete it permanently.`,
+        confirmText: 'Move to Trash', onYes: () => {
+          const apps = DB.read('apps', []); const trash = DB.read('trash', []);
+          trash.unshift({ id: uid('tr'), kind: 'entry', label: (a.data.f_name || 'Entry') + (a.symbol ? (' · ' + a.symbol) : ''), deletedAt: nowISO(), payload: { app: a } });
+          DB.write('apps', apps.filter(x => x.id !== id)); DB.write('trash', trash); toast('Moved to Trash', 'warn'); render();
+        }
+      });
+    }
+    function restoreTrash(tid) {
+      const trash = DB.read('trash', []); const t = trash.find(x => x.id === tid); if (!t) return;
+      if (t.kind === 'event') {
+        const events = DB.read('events', []); events.push(t.payload.event); DB.write('events', events);
+        const apps = DB.read('apps', []); DB.write('apps', apps.concat(t.payload.apps || []));
+      }
+      else { const apps = DB.read('apps', []); apps.push(t.payload.app); DB.write('apps', apps); }
+      DB.write('trash', trash.filter(x => x.id !== tid)); toast('Restored', 'ok'); render();
+    }
+    function purgeTrash(tid) {
+      const trash = DB.read('trash', []); const t = trash.find(x => x.id === tid);
+      confirmDelete({
+        title: 'Delete permanently?', body: `<b>${esc(t.label)}</b> will be erased for good. This cannot be undone.`, confirmText: 'Delete forever',
+        onYes: () => { DB.write('trash', trash.filter(x => x.id !== tid)); toast('Permanently deleted', 'bad'); render(); }
+      });
+    }
+    function emptyTrash() {
+      confirmDelete({
+        title: 'Empty the trash?', body: 'Everything in Trash will be permanently erased. This cannot be undone.', confirmText: 'Empty trash',
+        onYes: () => { DB.write('trash', []); toast('Trash emptied', 'bad'); render(); }
+      });
+    }
+
+    /* ============================ ADMIN LOGIN ============================ */
+    function renderAdminLogin() {
+      $('#app').innerHTML = `<div class="authwrap"><div class="authcard">
+    <div class="head"><div class="logo">C</div><h1>Campus Desk</h1><p>Admin sign-in</p></div>
+    <div class="body">
+      <div class="field"><label>Username</label><input class="input" id="lUser" placeholder="admin" autofocus></div>
+      <div class="field"><label>Password</label><input class="input" id="lPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn primary block" onclick="doLogin()">Sign in</button>
+      <p class="hint" style="text-align:center;margin-top:14px">Default login — <b>admin</b> / <b>admin123</b> (change it in Settings)</p>
+    </div></div></div>`;
+    }
+    function doLogin() {
+      const a = DB.read('admin', {}); if ($('#lUser').value.trim() === a.username && $('#lPass').value === a.password) { DB.write('session', { at: nowISO() }); go('/'); render(); toast('Welcome back', 'ok'); }
+      else toast('Invalid username or password', 'bad');
+    }
+
+    /* ============================ PUBLIC (QR target) ============================ */
+    function renderPublic(eventId) {
+      const e = DB.read('events', []).find(x => x.id === eventId);
+      if (!e) { $('#app').innerHTML = publicShell(`<div class="panel"><div class="pb">${emptyState('Link not found', 'This registration link is invalid or the event was removed.', '', null)}</div></div>`); return; }
+      // Entrance exam → staged portal (apply / login / status / admit / result)
+      if (e.category === 'entrance_exam') { return renderEntrancePortal(e); }
+      // Simple events → registration / attendance form
+      $('#app').innerHTML = publicShell(`
+    <div class="panel"><div class="ph"><div><div class="cat" style="color:${CATS[e.category].color};font-size:11px;font-weight:700;text-transform:uppercase">${CATS[e.category].icon} ${CATS[e.category].label}</div>
+      <h2 style="margin-top:4px">${esc(e.title)}</h2></div></div>
+      <div class="pb">
+        ${e.description ? `<p style="margin-top:0;color:var(--ink-2)">${esc(e.description)}</p>` : ''}
+        <p class="hint">${fmtDate(e.date)}${e.location ? (' · ' + esc(e.location)) : ''}</p>
+        <div class="divider"></div>
+        <div id="pubForm">${allFieldsFor(e).map(f => renderInput(f)).join('')}</div>
+        <button class="btn primary block" onclick="publicSubmit('${e.id}')">${e.category === 'college_event' ? 'Register' : 'Submit attendance'}</button>
+      </div>
+    </div>`);
+    }
+    function publicShell(inner) { return `<div class="public"><div class="pbar"><div class="brandmark" style="padding:0"><div class="logo">C</div><div><b>Campus Desk</b><span>Registration</span></div></div></div><div class="wrap">${inner}</div></div>`; }
+    function publicSubmit(eventId) {
+      const e = DB.read('events', []).find(x => x.id === eventId);
+      const data = collectInputs($('#pubForm').closest('.public'));
+      for (const f of allFieldsFor(e)) { if (f.required && !String(data[f.id] || '').trim() && f.type !== 'file') { toast('Please fill: ' + f.label, 'bad'); return; } }
+      const apps = DB.read('apps', []); apps.push(newApplicant(e, data, '', 'public')); DB.write('apps', apps);
+      $('.public .wrap').innerHTML = `<div class="panel"><div class="pb" style="text-align:center;padding:40px">
+    <div class="empty"><div class="big" style="background:var(--ok-bg);color:var(--ok)">✓</div>
+    <h3>${e.category === 'college_event' ? 'You’re registered!' : 'Attendance recorded'}</h3>
+    <p>Thanks, ${esc(data.f_name || '')}. Your details have been submitted for <b>${esc(e.title)}</b>.</p>
+    <button class="btn ghost" onclick="location.reload()">Submit another</button></div></div></div>`;
+    }
+
+    /* ----- ENTRANCE PORTAL (stateful: apply / login / status / admit / result) ----- */
+    function entranceState() { return DB.read('pubState', null); } // {appId}
+    function renderEntrancePortal(e) {
+      const st = entranceState();
+      const me = st ? DB.read('apps', []).find(a => a.id === st.appId) : null;
+      const valid = me && me.eventId === e.id;
+      $('#app').innerHTML = publicShell(`
+    <div class="panel"><div class="ph"><div><div class="cat" style="color:${CATS.entrance_exam.color};font-size:11px;font-weight:700;text-transform:uppercase">📝 Entrance Exam</div>
+      <h2 style="margin-top:4px">${esc(e.title)}</h2></div></div>
+      <div class="pb" id="portalBody"></div></div>`);
+      if (valid) portalStatus(e, me); else portalLanding(e);
+    }
+    function portalLanding(e) {
+      $('#portalBody').innerHTML = `
+    ${e.description ? `<p style="margin-top:0;color:var(--ink-2)">${esc(e.description)}</p>` : ''}
+    <p class="hint">${fmtDate(e.date)}${e.location ? (' · ' + esc(e.location)) : ''}</p>
+    <div class="tabs" style="margin:6px 0 16px"><button class="active" id="tApply" onclick="portalTab('apply','${e.id}')">Apply</button><button id="tLogin" onclick="portalTab('login','${e.id}')">I already applied — log in</button></div>
+    <div id="portalPane"></div>`;
+      portalTab('apply', e.id);
+    }
+    function portalTab(which, eid) {
+      const e = DB.read('events', []).find(x => x.id === eid);
+      $('#tApply')?.classList.toggle('active', which === 'apply'); $('#tLogin')?.classList.toggle('active', which === 'login');
+      const pane = $('#portalPane');
+      if (which === 'apply') {
+        const prog0 = (e.programs || [])[0]?.name || '';
+        pane.innerHTML = `
+      ${(e.programs || []).length ? `<div class="field"><label>Program <span class="req">*</span></label>
+        <select class="input" id="ppProg" onchange="portalProg('${eid}',this.value)">
+        ${e.programs.map(p => `<option ${p.name === prog0 ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+        <div class="hint">Fields below change with the program you choose.</div></div>`: ''}
+      <div id="ppFields">${allFieldsFor(e, prog0).map(f => renderInput(f)).join('')}</div>
+      <button class="btn primary block" onclick="portalApply('${eid}')">Submit application</button>`;
+      } else {
+        pane.innerHTML = `
+      <p class="hint" style="margin-top:0">Already applied and approved? Log in to view your status, download your admit card and check results.</p>
+      <div class="field"><label>Username — your Date of Birth</label><input class="input" type="date" id="liDob"></div>
+      <div class="field"><label>Password — your Symbol No</label><input class="input" id="liSym" placeholder="e.g. BS-2026-0001"></div>
+      <button class="btn primary block" onclick="portalLogin('${eid}')">Log in</button>
+      <p class="hint" style="text-align:center;margin-top:10px">You receive a Symbol No after the admin approves your application.</p>`;
+      }
+    }
+    function portalProg(eid, prog) {
+      const e = DB.read('events', []).find(x => x.id === eid);
+      $('#ppFields').innerHTML = allFieldsFor(e, prog).map(f => renderInput(f)).join('');
+    }
+    function portalApply(eid) {
+      const e = DB.read('events', []).find(x => x.id === eid);
+      const prog = $('#ppProg')?.value || (e.programs || [])[0]?.name || '';
+      const data = collectInputs($('#ppFields'));
+      for (const f of allFieldsFor(e, prog)) { if (f.required && !String(data[f.id] || '').trim() && f.type !== 'file') { toast('Please fill: ' + f.label, 'bad'); return; } }
+      const apps = DB.read('apps', []); const ap = newApplicant(e, data, prog, 'public'); apps.push(ap); DB.write('apps', apps);
+      DB.write('pubState', { appId: ap.id }); renderEntrancePortal(e);
+      toast('Application submitted', 'ok');
+    }
+    function portalLogin(eid) {
+      const e = DB.read('events', []).find(x => x.id === eid);
+      const dob = $('#liDob').value, sym = $('#liSym').value.trim();
+      const a = DB.read('apps', []).find(x => x.eventId === eid && (x.dob || '') === dob && (x.symbol || '').toLowerCase() === sym.toLowerCase() && x.symbol);
+      if (!a) { toast('No match. Check your DOB and Symbol No.', 'bad'); return; }
+      DB.write('pubState', { appId: a.id }); renderEntrancePortal(e); toast('Logged in', 'ok');
+    }
+    function portalStatus(e, a) {
+      const steps = [
+        { k: 'submitted', t: 'Application submitted', d: 'We received your application.' },
+        { k: 'approved', t: 'Approved by admin', d: 'Your Symbol No has been issued.' },
+        { k: 'admit', t: 'Admit card ready', d: 'Download and bring it to the exam.' },
+        { k: 'attended', t: 'Attendance & exam', d: 'Marked at the exam hall.' },
+        { k: 'result', t: 'Result published', d: 'Your result is available below.' },
+      ];
+      const reached = k => {
+        const order = ['submitted', 'approved', 'admit_issued', 'present', 'absent', 'result'];
+        const cur = order.indexOf(a.status);
+        const map = { submitted: 0, approved: 1, admit: 1, attended: 3, result: 5 };
+        return cur >= map[k];
+      };
+      const isReject = a.status === 'rejected';
+      $('#portalBody').innerHTML = `
+    <div class="card" style="background:var(--brand-tint-2);display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <div><div class="hint">Applicant</div><b style="font-size:16px">${esc(a.data.f_name || '—')}</b></div>
+      <div><div class="hint">Program</div><b>${esc(a.program || '—')}</b></div>
+      <div><div class="hint">Symbol No</div><b>${a.symbol ? esc(a.symbol) : '<span class="chip warn">Pending approval</span>'}</b></div>
+      <div style="margin-left:auto"><span class="chip ${(STATUS[a.status] || { chip: 'muted' }).chip}"><span class="dot"></span>${(STATUS[a.status] || { label: a.status }).label}</span></div>
+    </div>
+    ${isReject ? `<div class="card" style="background:var(--bad-bg);color:var(--bad);margin-top:14px">Your application was not approved. Please contact the admissions office.</div>` : `
+    <div class="divider"></div>
+    <div class="tl">${steps.map(s => `<div class="it ${reached(s.k) ? 'done' : ''}"><div class="t">${s.t}</div><div class="d">${s.d}</div></div>`).join('')}</div>`}
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+      ${['admit_issued', 'approved', 'present', 'absent', 'result'].includes(a.status) ? `<button class="btn primary" onclick="showAdmit('${a.id}')">⬇ Admit card</button>` : ''}
+      ${a.result ? `<button class="btn subtle" onclick="portalResult('${a.id}')">View result</button>` : ''}
+      <button class="btn ghost" onclick="portalLogout('${e.id}')">Log out</button>
+    </div>
+    ${a.status === 'approved' || a.status === 'submitted' ? `<p class="hint" style="margin-top:12px">${a.status === 'submitted' ? 'Your application is awaiting admin approval. Re-scan the QR later to check back.' : 'You are approved! Download your admit card above.'}</p>` : ''}`;
+    }
+    function portalResult(id) {
+      const a = DB.read('apps', []).find(x => x.id === id); const r = a.result;
+      modal(`<div class="mh"><div><h2>Result</h2><p>${esc(a.data.f_name || '')} · ${esc(a.symbol || '')}</p></div><button class="x" data-x>×</button></div>
+    <div class="mb"><div class="card" style="text-align:center;background:var(--brand-tint-2)">
+      <div class="hint">Outcome</div><div style="font-family:var(--font-d);font-size:30px;font-weight:700;color:${r.outcome === 'Pass' ? 'var(--ok)' : r.outcome === 'Fail' ? 'var(--bad)' : 'var(--warn)'}">${esc(r.outcome)}</div>
+      <dl style="display:inline-grid;grid-template-columns:auto auto;gap:6px 14px;margin-top:10px;text-align:left">
+        ${r.marks != null ? `<dt class="hint">Marks</dt><dd><b>${r.marks}</b></dd>` : ''}
+        ${r.rank != null ? `<dt class="hint">Rank</dt><dd><b>${r.rank}</b></dd>` : ''}
+        ${r.remarks ? `<dt class="hint">Remarks</dt><dd>${esc(r.remarks)}</dd>` : ''}
+      </dl></div></div>
+    <div class="mf"><button class="btn primary" data-x>Close</button></div>`);
+    }
+    function portalLogout(eid) { DB.write('pubState', null); const e = DB.read('events', []).find(x => x.id === eid); renderEntrancePortal(e); }
+
+    /* ============================ utils: download ============================ */
+    function dl(name, blob) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 2000); }
+    function emptyState(title, body, cta, onclick) {
+      return `<div class="empty"><div class="big">✦</div><h3>${esc(title)}</h3>${body ? `<p>${body}</p>` : ''}
+    ${cta && onclick ? `<button class="btn primary" style="margin-top:8px" onclick="${onclick}">${esc(cta)}</button>` : ''}</div>`;
+    }
+    function panelWrap(title, inner) { return `<div class="panel"><div class="ph"><h2>${esc(title)}</h2></div><div class="pb flush">${inner}</div></div>`; }
+
+    /* ============================ boot ============================ */
+    window.__editId = null;
+    render();
+  </script>
+</body>
+
+</html>
