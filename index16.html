@@ -2616,6 +2616,15 @@ table.tbl tr:hover td{background:var(--brand-tint-2)}
 .report-doc{background:#fff;border:1px solid var(--line-2);border-radius:12px;padding:18px}
 .report-doc .rep-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--brand);padding-bottom:10px;margin-bottom:12px}
 .rep-tbl th{background:var(--brand-tint)}
+/* ---- SIS8: paper bar + urgent ---- */
+.paperbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.paperchip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line-2);border-radius:10px;padding:2px 4px 2px 2px;background:#fff}
+.paperchip.active{border-color:var(--brand);background:var(--brand-tint)}
+.paperchip .pn{border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--ink);padding:5px 8px;border-radius:8px}
+.paperchip.active .pn{color:var(--brand-700)}
+.urgent-btn{border:1px solid var(--line-2);background:#fff;border-radius:9px;padding:7px 11px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--ink-2)}
+.urgent-btn.on{border-color:#e0a106;background:#fff7e6;color:#7a5600}
+.urgent-btn .ub{background:var(--bad,#d33);color:#fff;border-radius:8px;padding:0 5px;font-size:11px;margin-left:3px}
 /* ---- SIS5: month calendar ---- */
 .side{align-self:flex-start}
 .cal-nav{display:flex;align-items:center;gap:8px}
@@ -2797,10 +2806,11 @@ function routeRender(){
   switch(seg[0]){
     case '': case 'dashboard': return shell('dashboard', viewDashboard());
     case 'events':   return can('events')? (seg[1] ? shell('events', viewEventDetail(seg[1])) : shell('events', viewEvents())) : shell('events', restricted());
-    case 'entrance': return can('entrance')? (seg[1] ? shell('entrance', viewEntranceDetail(seg[1])) : shell('entrance', viewEntrance())) : shell('entrance', restricted());
-    case 'papers':   return can('papers')? (seg[1] ? shell('papers', viewPaperBuilder(seg[1])) : shell('papers', viewPapers())) : shell('papers', restricted());
-    case 'attendance': return can('eattendance')? shell('attendance', viewAttendance()) : shell('attendance', restricted());
-    case 'results':  return can('results')? shell('results', viewResults()) : shell('results', restricted());
+    case 'entrance': return isSuper()? (seg[1] ? shell('entrance', viewEntranceDetail(seg[1])) : shell('entrance', viewEntrance())) : shell('entrance', restricted());
+    case 'papers':   return isSuper()? (seg[1] ? shell('papers', viewPaperBuilder(seg[1])) : shell('papers', viewPapers())) : shell('papers', restricted());
+    case 'attendance': return isSuper()? shell('attendance', viewAttendance()) : shell('attendance', restricted());
+    case 'results':  return isSuper()? shell('results', viewResults()) : shell('results', restricted());
+    case 'admission':return isSuper()? shell('admission', viewAdmission()) : shell('admission', restricted());
     case 'programs': return shell('programs', viewPrograms());
     case 'students': return can('students')? shell('students', viewStudents()) : shell('students', restricted());
     case 'graduates':return (isSuper()||can('students'))? shell('graduates', viewGraduates()) : shell('graduates', restricted());
@@ -2841,11 +2851,12 @@ function shell(active, html){
         <div class="label">Overview</div>
         ${nav('dashboard',I.grid,'Dashboard','dashboard')}
         ${can('events')?nav('events',I.cal,'Events','events'):''}
-        <div class="label">Admissions</div>
-        ${can('entrance')?nav('entrance',I.exam,'Entrance Exams','entrance'):''}
-        ${can('papers')?nav('papers',I.doc,'Question Papers','papers'):''}
-        ${can('eattendance')?nav('attendance',I.check,'Attendance','attendance'):''}
-        ${can('results')?nav('results',I.award,'Results','results'):''}
+        ${isSuper()?`<div class="label">Entrance &amp; Admission</div>
+        ${nav('entrance',I.exam,'Entrance Exams','entrance')}
+        ${nav('papers',I.doc,'Question Papers','papers')}
+        ${nav('attendance',I.check,'Entrance Attendance','attendance')}
+        ${nav('results',I.award,'Results','results')}
+        ${nav('admission',I.users,'Admission','admission')}`:''}
         <div class="label">Academics</div>
         ${nav('programs',I.grid,'Programs','programs')}
         ${can('students')?nav('students',I.users,'Students','students'):''}
@@ -2871,7 +2882,9 @@ function shell(active, html){
         <button class="iconbtn mh no-print" onclick="document.getElementById('side').classList.toggle('open');document.getElementById('scrim').classList.toggle('open')">☰</button>
         <div><div class="crumb">${active==='dashboard'?'':'Campus Desk'}</div><h1 id="pageTitle">${pageTitle(active)}</h1></div>
         <div class="spacer"></div>
-        ${notifBell()}
+        ${urgentBtn()}
+        ${urgentBtn()}
+      ${notifBell()}
         ${active==='events'&&can('events')?`<button class="btn primary no-print" onclick="openEventModal()">+ New event</button>`:''}
         ${active==='entrance'&&can('entrance')?`<button class="btn primary no-print" onclick="openEventModal('entrance_exam')">+ New entrance</button>`:''}
         ${active==='programs'&&isSuper()?`<button class="btn primary no-print" onclick="openProgramModal()">+ New program</button>`:''}
@@ -2881,7 +2894,7 @@ function shell(active, html){
   </div>`;
   $('#scrim')?.addEventListener('click',()=>{ $('#side').classList.remove('open'); $('#scrim').classList.remove('open'); });
 }
-function pageTitle(a){return {dashboard:'Dashboard',events:'Events',entrance:'Entrance Exams',papers:'Question Papers',attendance:'Attendance',results:'Results',programs:'Programs',students:'Students',graduates:'Passed-out',academics:'Academics',fees:'Fees',attend:'Attendance',exams:'Exams',examtypes:'Exam Categories',reports:'Reports',logs:'Activity Log',users:'Users',staff:'Staff & Access',trash:'Trash (Trace)',settings:'Settings'}[a]||'Campus Desk';}
+function pageTitle(a){return {dashboard:'Dashboard',events:'Events',entrance:'Entrance Exams',papers:'Question Papers',attendance:'Entrance Attendance',results:'Results',admission:'Admission',programs:'Programs',students:'Students',graduates:'Passed-out',academics:'Academics',fees:'Fees',attend:'Attendance',exams:'Exams',examtypes:'Exam Categories',reports:'Reports',logs:'Activity Log',users:'Users',staff:'Staff & Access',trash:'Trash (Trace)',settings:'Settings'}[a]||'Campus Desk';}
 function logout(){ logEvent('Signed out'); DB.write('session',null); go('/'); render(); }
 
 /* ============================ DASHBOARD ============================ */
@@ -3776,6 +3789,7 @@ function viewPaperBuilder(id){
       <div class="ph"><div><div class="cat" style="color:${CATS.entrance_exam.color};font-size:11px;font-weight:700;text-transform:uppercase">📄 Question Paper</div>
         <h2 style="margin-top:4px">${esc(e.title)}</h2></div><div class="spacer"></div>
         <button class="btn primary sm" onclick="openQuestionModal('${id}')">+ Add question</button></div>
+      ${paperBar(e)}
       <div class="pb">
         ${qs.length? `<div class="qlist">${qs.map((q,i)=>questionRow(e.id,q,i)).join('')}</div>`
           : emptyState('No questions yet','Add questions with their options, correct answer and marks — or import a question set from Excel.','+ Add question',`openQuestionModal('${id}')`)}
@@ -4840,7 +4854,7 @@ function openPromote(){ if(!(isSuper()||can('promote'))){toast('No access','bad'
       <p class="hint">All students in this program at the chosen semester move up by one. They then see the new semester’s schedule, courses and fees; the finished semester’s class schedule is no longer shown to them.</p>
     </div><div class="mf"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" onclick="doPromote()">Promote</button></div>`);
 }
-function doPromote(){ const pid=$('#prProg').value; const fromSem=Number($('#prSem').value)||1; const p=progById(pid);
+function doPromote(){ if(!shiftGuard())return; const pid=$('#prProg').value; const fromSem=Number($('#prSem').value)||1; const p=progById(pid);
   const students=DB.read('students',[]); let n=0;
   students.forEach(s=>{ if(s.programId===pid && Number(s.semester)===fromSem){ s.semester=Math.min((p.semesters||99),fromSem+1); s.logs=s.logs||[]; s.logs.push({at:nowISO(),action:`Promoted to semester ${s.semester}`}); n++; } });
   DB.write('students',students);
@@ -5019,7 +5033,7 @@ function bulkDeleteStudents(){ const ids=bulkIds('#studTbl'); if(!ids.length){to
     students=students.filter(x=>!ids.includes(x.id)); pays=pays.filter(p=>!ids.includes(p.studentId)); marks=marks.filter(m=>!ids.includes(m.studentId));
     DB.write('students',students); DB.write('payments',pays); DB.write('marks',marks); logEvent(`Bulk-deleted ${ids.length} student(s)`); toast(`${ids.length} moved to Trash`,'warn'); render();
   }}); }
-function bulkShiftStudents(){ const ids=bulkIds('#studTbl'); if(!ids.length){toast('Select students first','warn');return;}
+function bulkShiftStudents(){ if(!shiftGuard())return; const ids=bulkIds('#studTbl'); if(!ids.length){toast('Select students first','warn');return;}
   const students=DB.read('students',[]); let n=0;
   ids.forEach(id=>{ const s=students.find(x=>x.id===id); if(!s)return; const p=progById(s.programId); s.semester=Math.min((p&&p.semesters)||99,(Number(s.semester)||1)+1); (s.logs=s.logs||[]).push({at:nowISO(),action:'Shifted to semester '+s.semester}); n++;
     const fees=DB.read('acad',[]).filter(x=>x.type==='fee'&&x.programId===s.programId&&Number(x.semester)===s.semester); const pays=DB.read('payments',[]);
@@ -5519,13 +5533,109 @@ function bulkPassOut(){ const ids=bulkIds('#studTbl'); if(!ids.length){toast('Se
 function unGraduate(id){ const students=DB.read('students',[]); const s=students.find(x=>x.id===id); if(s){s.status='admitted'; delete s.gradAt; DB.write('students',students); toast('Reinstated','ok'); render();} }
 
 /* ---------- semester up / down ---------- */
-function changeStudentSem(id,delta){ const students=DB.read('students',[]); const s=students.find(x=>x.id===id); if(!s)return; const p=progById(s.programId); const max=(p&&p.semesters)||99;
+function changeStudentSem(id,delta){ if(!shiftGuard())return; const students=DB.read('students',[]); const s=students.find(x=>x.id===id); if(!s)return; const p=progById(s.programId); const max=(p&&p.semesters)||99;
   const ns=Math.min(max,Math.max(1,(Number(s.semester)||1)+delta)); if(ns===s.semester){toast(delta>0?'Already at final semester':'Already at first semester','warn');return;}
   s.semester=ns; (s.logs=s.logs||[]).push({at:nowISO(),action:'Semester changed to '+ns}); DB.write('students',students);
   if(delta>0){ const fees=DB.read('acad',[]).filter(x=>x.type==='fee'&&x.programId===s.programId&&Number(x.semester)===ns); const pays=DB.read('payments',[]); fees.forEach(f=>{ if(!pays.some(pp=>pp.studentId===s.id&&pp.title===f.title&&Number(pp.semester)===ns)) pays.push({id:uid('pay'),studentId:s.id,programId:s.programId,semester:ns,title:f.title,amount:Number(f.amount)||0,paid:false,approved:true}); }); DB.write('payments',pays); }
   logEvent('Changed semester of '+s.name+' to '+ns,s.programId); toast('Semester set to '+ns,'ok'); openStudentDetail(id); }
-function bulkShiftDown(){ const ids=bulkIds('#studTbl'); if(!ids.length){toast('Select students first','warn');return;}
+function bulkShiftDown(){ if(!shiftGuard())return; const ids=bulkIds('#studTbl'); if(!ids.length){toast('Select students first','warn');return;}
   const students=DB.read('students',[]); let n=0; ids.forEach(id=>{ const s=students.find(x=>x.id===id); if(s&&s.semester>1){s.semester--; (s.logs=s.logs||[]).push({at:nowISO(),action:'Shifted down to semester '+s.semester}); n++;} }); DB.write('students',students); logEvent(`Shifted ${n} student(s) down a semester`); toast(`Shifted ${n} down`,'ok'); render(); }
+
+/* ============================================================================
+   SIS PHASE 8 — multiple question papers per entrance (+ choose paper),
+   entrance suite restricted to admin, accountant cannot shift semesters,
+   dedicated Admission page, Urgent panel in the top bar.
+   ============================================================================ */
+
+/* entrance suite is admin-only: drop these from coordinator-grantable perms */
+['admissions','results','entrance','papers','eattendance'].forEach(k=>{ const i=PERMS.indexOf(k); if(i>=0)PERMS.splice(i,1); });
+
+/* ---------- multiple question papers ---------- */
+function examOf(e){
+  if(!e.papers || !e.papers.length){
+    const seed = (e.exam && ((e.exam.questions&&e.exam.questions.length)||e.exam.passMarks)) ?
+      {id:uid('pp'),title:'Paper 1',questions:e.exam.questions||[],passMarks:e.exam.passMarks||0} :
+      {id:uid('pp'),title:'Paper 1',questions:[],passMarks:0};
+    e.papers=[seed]; e.activePaper=seed.id;
+  }
+  if(!e.activePaper || !e.papers.some(p=>p.id===e.activePaper)) e.activePaper=e.papers[0].id;
+  const ap=e.papers.find(p=>p.id===e.activePaper);
+  if(!ap.questions) ap.questions=[]; if(ap.passMarks==null) ap.passMarks=0;
+  e.exam=ap;   // the chosen paper drives all answer-sheet / OMR / grading logic
+  return ap;
+}
+function paperBar(e){ const aid=e.activePaper;
+  return `<div class="pb" style="padding-bottom:0"><div class="paperbar">
+    ${(e.papers||[]).map(p=>`<span class="paperchip ${p.id===aid?'active':''}">
+      <button class="pn" onclick="choosePaper('${e.id}','${p.id}')" title="${p.id===aid?'Chosen paper':'Choose this paper'}">${p.id===aid?'● ':'○ '}${esc(p.title)} <span class="sub">${(p.questions||[]).length}q</span></button>
+      <button class="iconbtn" title="Rename" onclick="renamePaper('${e.id}','${p.id}')">✎</button>
+      <button class="iconbtn" title="Duplicate" onclick="duplicatePaper('${e.id}','${p.id}')">⧉</button>
+      ${(e.papers||[]).length>1?`<button class="iconbtn" title="Delete paper" onclick="deletePaper('${e.id}','${p.id}')">${I.trash}</button>`:''}
+    </span>`).join('')}
+    <button class="btn ghost sm" onclick="addPaper('${e.id}')">+ New paper</button>
+  </div><div class="hint" style="margin-top:6px">Build as many papers as you like; the <b>chosen</b> paper (●) is the one used for this entrance — its questions drive the answer sheet, OMR and grading.</div></div>`;
+}
+function addPaper(eid){ const e=DB.read('events',[]).find(x=>x.id===eid); examOf(e); const p={id:uid('pp'),title:'Paper '+((e.papers||[]).length+1),questions:[],passMarks:0}; e.papers.push(p); e.activePaper=p.id; examOf(e); writeEvent(e); logEvent('Added question paper to '+e.title); toast('New paper added & chosen','ok'); render(); }
+function choosePaper(eid,pid){ const e=DB.read('events',[]).find(x=>x.id===eid); if(!(e.papers||[]).some(p=>p.id===pid))return; e.activePaper=pid; examOf(e); writeEvent(e); logEvent('Chose paper "'+(e.papers.find(p=>p.id===pid).title)+'" for '+e.title); toast('Paper chosen for this entrance','ok'); render(); }
+function renamePaper(eid,pid){ const e=DB.read('events',[]).find(x=>x.id===eid); const p=e.papers.find(x=>x.id===pid);
+  modal(`<div class="mh"><div><h2>Rename paper</h2></div><button class="x" data-x>×</button></div>
+    <div class="mb"><div class="field"><label>Paper name</label><input class="input" id="ppName" value="${esc(p.title)}"></div></div>
+    <div class="mf"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" onclick="savePaperName('${eid}','${pid}')">Save</button></div>`); }
+function savePaperName(eid,pid){ const e=DB.read('events',[]).find(x=>x.id===eid); const p=e.papers.find(x=>x.id===pid); p.title=$('#ppName').value.trim()||p.title; examOf(e); writeEvent(e); closeModal(); toast('Renamed','ok'); render(); }
+function duplicatePaper(eid,pid){ const e=DB.read('events',[]).find(x=>x.id===eid); const src=e.papers.find(x=>x.id===pid);
+  const copy={id:uid('pp'),title:src.title+' (copy)',passMarks:src.passMarks,questions:(src.questions||[]).map(q=>Object.assign({},q,{id:uid('q')}))};
+  e.papers.push(copy); e.activePaper=copy.id; examOf(e); writeEvent(e); logEvent('Duplicated a paper in '+e.title); toast('Paper duplicated & chosen','ok'); render(); }
+function deletePaper(eid,pid){ const e=DB.read('events',[]).find(x=>x.id===eid); if((e.papers||[]).length<=1){toast('Keep at least one paper','warn');return;} const p=e.papers.find(x=>x.id===pid);
+  confirmDelete({title:'Delete paper?',body:`<b>${esc(p.title)}</b> and its questions will be removed.`,confirmText:'Delete',onYes:()=>{ e.papers=e.papers.filter(x=>x.id!==pid); if(e.activePaper===pid)e.activePaper=e.papers[0].id; examOf(e); writeEvent(e); logEvent('Deleted a paper from '+e.title); toast('Paper deleted','warn'); render(); }}); }
+
+/* ---------- accountant cannot shift semesters ---------- */
+function shiftGuard(){ const me=currentStaff(); if(me&&me.role==='accounting'){ toast('Accountants cannot shift semesters','bad'); return false; } if(!(isSuper()||can('promote')||can('students'))){ toast('Not allowed','bad'); return false; } return true; }
+
+/* ---------- Admission page ---------- */
+function viewAdmission(){ if(!isSuper()) return restricted();
+  const passable=DB.read('apps',[]).filter(a=>a.status==='result' && a.result && a.result.outcome==='Pass');
+  const progs=DB.read('programs',[]);
+  return `<div class="panel"><div class="ph"><h2>Admission</h2><span class="chip muted">${passable.length} ready</span><div class="spacer"></div>
+      <button class="btn ghost sm" onclick="go('/results')">View results →</button></div>
+    <div class="pb"><p class="hint" style="margin-top:0">Students who <b>passed</b> the entrance exam are listed here. Pick the program and admit them — this creates an enrolled student with login and fee dues. Set the program’s fee structure first so dues are generated automatically.</p>
+    ${!progs.length?'<div class="card" style="border-color:var(--bad)">Create an academic program first (Programs).</div>':''}
+    ${passable.length?`<div class="tablewrap"><table class="tbl"><thead><tr><th>Applicant</th><th>Symbol</th><th>Score</th><th>Admit to</th></tr></thead><tbody>
+      ${passable.map(a=>{ const guess=progs.find(p=>p.name.toLowerCase()===String(a.program||'').toLowerCase()); return `<tr>
+        <td><div class="name">${esc(a.data.f_name||'—')}</div><div class="sub">DOB ${esc(a.dob||'')}</div></td>
+        <td>${esc(a.symbol||'—')}</td><td>${a.result.marks!=null?a.result.marks:'—'}</td>
+        <td><div style="display:flex;gap:6px;align-items:center"><select class="input sm" id="adm_${a.id}" style="width:auto">${progs.map(p=>`<option value="${p.id}" ${guess&&guess.id===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
+        <button class="btn sm primary" ${progs.length?'':'disabled'} onclick="admitApplicant('${a.id}')">Admit</button></div></td></tr>`;}).join('')}
+    </tbody></table></div>`:emptyState('No applicants ready','When applicants pass the entrance exam (Results), they appear here to be admitted.','',null)}
+    </div></div>`;
+}
+
+/* ---------- Urgent panel (top bar) ---------- */
+function urgentItems(){ const items=[]; const stu=(typeof currentStudent==='function')?currentStudent():null;
+  if(stu){ const due=studentDue(stu.id); if(due>0)items.push({t:'Fees due',b:'You owe '+due+'. Please clear your dues.',go:"go('/me/fees')"});
+    const am=absencesThisMonth(stu.id); const lim=cfg().attLimit||4; if(am>=lim)items.push({t:'Attendance alert',b:am+' absences this month.',go:"go('/me/attend')"});
+    const low=DB.read('marks',[]).filter(m=>m.studentId===stu.id&&markAlert(m)).length; if(low)items.push({t:'Low marks',b:low+' subject(s) below the pass threshold.',go:"go('/me/marks')"});
+    const imp=DB.read('acad',[]).filter(x=>x.type==='calendar'&&x.important&&x.approved!==false&&String(x.date)>=new Date().toISOString().slice(0,10)).slice(0,3); imp.forEach(e=>items.push({t:'⭐ '+e.title,b:e.date,go:"go('/me/calendar')"}));
+    return items; }
+  if(isSuper()){
+    const ps=pendingStudents().length; if(ps)items.push({t:ps+' student approval(s)',b:'Coordinator-added students awaiting approval.',go:"go('/students')"});
+    const pc=DB.read('acad',[]).filter(x=>x.type==='calendar'&&x.approved===false).length; if(pc)items.push({t:pc+' calendar approval(s)',b:'Entries awaiting approval.',go:"go('/academics')"});
+    const pf=pendingFees().length; if(pf)items.push({t:pf+' fee approval(s)',b:'Accounting uploads awaiting approval.',go:"go('/fees')"});
+    const adm=DB.read('apps',[]).filter(a=>a.status==='result'&&a.result&&a.result.outcome==='Pass').length; if(adm)items.push({t:adm+' ready to admit',b:'Passed applicants ready for admission.',go:"go('/admission')"});
+    const c=cfg(); const last=c.backupLastAt?new Date(c.backupLastAt).getTime():0; if(Date.now()-last>(c.backupEveryH||24)*3600000)items.push({t:'Backup due',b:'Export your data from Settings.',go:"go('/settings')"});
+  } else {
+    const low=DB.read('marks',[]).filter(m=>markAlert(m)&&(myProgramIds()===null||myProgramIds().includes(m.programId))).length; if(low&&can('marks'))items.push({t:low+' low-mark alert(s)',b:'Students scoring below the threshold.',go:"go('/exams')"});
+    const pf=pendingFees().length; if(pf&&can('fees'))items.push({t:pf+' fee record(s) pending',b:'Awaiting admin approval.',go:"go('/fees')"});
+  }
+  const impAll=DB.read('acad',[]).filter(x=>x.type==='calendar'&&x.important&&String(x.date)>=new Date().toISOString().slice(0,10)).slice(0,3); impAll.forEach(e=>items.push({t:'⭐ '+e.title,b:e.date,go:"go('/academics')"}));
+  return items;
+}
+function urgentCount(){ try{ return urgentItems().length; }catch(_){ return 0; } }
+function urgentBtn(){ const n=urgentCount(); return `<button class="urgent-btn no-print${n?' on':''}" onclick="openUrgent()" title="Urgent">🔴 Urgent${n?` <span class="ub">${n}</span>`:''}</button>`; }
+function openUrgent(){ const items=urgentItems();
+  modal(`<div class="mh"><div><h2>Urgent</h2><p>${items.length?items.length+' item(s) need attention':'Nothing urgent right now'}</p></div><button class="x" data-x>×</button></div>
+    <div class="mb">${items.length?items.map(it=>`<div class="card" style="margin-bottom:8px;border-color:#e7c66b;background:#fff7e6;cursor:pointer" onclick="closeModal();${it.go}"><b>${esc(it.t)}</b><div class="hint" style="margin-top:3px">${esc(it.b)}</div></div>`).join(''):'<p class="hint">You’re all caught up. 🎉</p>'}</div>
+    <div class="mf"><button class="btn primary" data-x>Close</button></div>`,{lg:true});
+}
 
 /* ============================ DELETE → TRASH → PURGE ============================ */
 function askDeleteEvent(id){
@@ -5572,7 +5682,7 @@ function renderAuth(){
   $('#app').innerHTML=`<div class="authwrap"><div class="authcard">
     <div class="head"><div class="logo">${brandLogo()}</div><h1>${esc(brandName())}</h1><p>Sign in to continue</p></div>
     <div class="body">
-      <div class="tabs" style="margin-bottom:14px"><button class="active" id="atAdmin" onclick="authTab('admin')">Admin / Coordinator/Accountant </button><button id="atStudent" onclick="authTab('student')">Student</button></div>
+      <div class="tabs" style="margin-bottom:14px"><button class="active" id="atAdmin" onclick="authTab('admin')">Admin / Coordinator</button><button id="atStudent" onclick="authTab('student')">Student</button></div>
       <div id="authPane"></div>
     </div></div></div>`;
   authTab('admin');
