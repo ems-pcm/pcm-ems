@@ -2787,7 +2787,7 @@ function render(){
   try{ document.title=brandName(); }catch(_){}
   routeRender();
   setTimeout(paintInlineQR,0);
-  try{ if(DB.read('session',null)&&isSuper()) checkBackupDue(); }catch(_){}
+  try{ if(DB.read('session',null)&&isSuper()) autoBackup(); }catch(_){}
 }
 function routeRender(){
   const r = route();
@@ -2863,7 +2863,7 @@ function shell(active, html){
         ${(isSuper()||can('students'))?nav('graduates',I.award,'Passed-out','graduates'):''}
         ${(can('courses')||can('fees')||can('schedule')||can('exams')||can('marks')||can('calendar')||can('teachers'))?nav('academics',I.doc,'Academics','academics'):''}
         ${(isSuper()||can('fees'))?nav('fees',I.award,'Fees','fees'):''}
-        ${(isSuper()||can('attendance'))?nav('attend',I.check,'Attendance','attend'):''}
+        ${(isSuper()||can('attendance'))?nav('attend',I.check,'Student Attendance','attend'):''}
         ${(isSuper()||can('marks')||can('exams'))?nav('exams',I.award,'Exams','exams'):''}
         ${(can('examtypes'))?nav('examtypes',I.exam,'Exam Categories','examtypes'):''}
         ${(can('reports'))?nav('reports',I.award,'Reports','reports'):''}
@@ -3257,6 +3257,7 @@ function viewSettings(){
       <button class="btn ghost block" style="margin-bottom:10px" onclick="saveCfg()">Save preferences</button>
       <button class="btn danger block" onclick="resetAll()">Reset all data</button>
     </div></div>
+    ${localBackupsPanel()}
   </div>`;
 }
 function saveBrand(){ setCfg({appName:$('#setApp').value.trim()||'Campus Desk',appLogo:$('#setLogo').value.trim(),appTagline:$('#setTag').value.trim()});
@@ -3383,7 +3384,7 @@ function saveEvent(editId){
   };
   if(editId){ const idx=events.findIndex(e=>e.id===editId); events[idx]={...events[idx],...base}; toast('Event updated','ok'); }
   else { events.push({id:uid('ev'),...base,createdAt:nowISO()}); toast('Event created','ok'); }
-  DB.write('events',events); closeModal(); render();
+  DB.write('events',events); logEvent((editId?'Updated':'Created')+' '+(base.category==='entrance_exam'?'entrance exam':'event')+' '+title); closeModal(); render();
 }
 
 /* ============================ ENTRY (registration) CRUD ============================ */
@@ -3462,7 +3463,7 @@ function approveApplicant(id){
   const yr=new Date().getFullYear(); const n=apps.filter(x=>x.eventId===a.eventId&&x.symbol).length+1;
   a.symbol=`${(e.title.match(/[A-Z]/g)||['E','X']).slice(0,2).join('')||'EX'}-${yr}-${String(n).padStart(4,'0')}`;
   a.status='approved'; a.updatedAt=nowISO(); a.logs.push({at:nowISO(),action:'Approved · symbol '+a.symbol+' assigned'});
-  DB.write('apps',apps);
+  DB.write('apps',apps); logEvent('Approved entrance applicant '+(a.data.f_name||'')+' · symbol '+a.symbol);
   modal(`<div class="mh"><div><h2>Applicant approved ✓</h2><p>Share these login credentials with the applicant.</p></div><button class="x" data-x>×</button></div>
     <div class="mb"><div class="card" style="background:var(--brand-tint-2)">
       <dl style="display:grid;grid-template-columns:120px 1fr;gap:8px;margin:0;font-size:14px">
@@ -3473,7 +3474,7 @@ function approveApplicant(id){
   render();
 }
 function rejectApplicant(id){ const apps=DB.read('apps',[]); const a=apps.find(x=>x.id===id); a.status='rejected'; a.updatedAt=nowISO();
-  a.logs.push({at:nowISO(),action:'Rejected'}); DB.write('apps',apps); toast('Applicant rejected','warn'); render(); }
+  a.logs.push({at:nowISO(),action:'Rejected'}); DB.write('apps',apps); logEvent('Rejected entrance applicant '+(a.data.f_name||'')); toast('Applicant rejected','warn'); render(); }
 
 function publishResult(id){
   const apps=DB.read('apps',[]); const a=apps.find(x=>x.id===id);
@@ -3498,7 +3499,7 @@ function saveResult(id){ const apps=DB.read('apps',[]); const a=apps.find(x=>x.i
     remarks:msg, message:msg,
     admission:{ offered, message: admMsg || (offered?('Congratulations! You are offered admission'+(a.program?(' to '+a.program):'')+'. Show the admission QR below at the admissions office to begin enrolment.'):'') } };
   a.status='result'; a.updatedAt=nowISO(); a.logs.push({at:nowISO(),action:'Result published: '+a.result.outcome+(offered?' · admission offered':'')});
-  DB.write('apps',apps); closeModal(); toast('Result published','ok'); render(); }
+  DB.write('apps',apps); logEvent('Published result for '+(a.data.f_name||'')+' · '+a.result.outcome); closeModal(); toast('Result published','ok'); render(); }
 
 /* ----- time log ----- */
 function showLog(id){
@@ -3874,12 +3875,12 @@ function saveQuestion(eid,qid){
   const e=DB.read('events',[]).find(x=>x.id===eid); examOf(e);
   if(qid){ const i=e.exam.questions.findIndex(x=>x.id===qid); e.exam.questions[i]=qDraft; }
   else { e.exam.questions.push(qDraft); }
-  writeEvent(e); closeModal(); toast('Question saved','ok'); render();
+  writeEvent(e); logEvent((qid?'Edited':'Added')+' a question in '+e.title); closeModal(); toast('Question saved','ok'); render();
 }
 function deleteQuestion(eid,qid){
   const e=DB.read('events',[]).find(x=>x.id===eid);
   confirmDelete({title:'Delete question?',body:'This question will be removed from the paper.',confirmText:'Delete',onYes:()=>{
-    examOf(e); e.exam.questions=e.exam.questions.filter(q=>q.id!==qid); writeEvent(e); toast('Question deleted','warn'); render();
+    examOf(e); e.exam.questions=e.exam.questions.filter(q=>q.id!==qid); writeEvent(e); logEvent('Deleted a question from '+e.title); toast('Question deleted','warn'); render();
   }});
 }
 function savePassMarks(eid,val){ const e=DB.read('events',[]).find(x=>x.id===eid); examOf(e); e.exam.passMarks=Math.max(0,Number(val)||0); writeEvent(e); toast('Pass marks saved','ok'); }
@@ -3992,13 +3993,14 @@ function resultFromGrade(a,g){ return {outcome:g.pass?'Pass':'Fail', marks:g.obt
 function approveExamResult(appId){
   const apps=DB.read('apps',[]); const a=apps.find(x=>x.id===appId);
   if(!a.exam){ toast('Grade this applicant first','warn'); return; }
-  a.exam.approved=true; a.result=resultFromGrade(a,a.exam); a.status='result'; a.updatedAt=nowISO();
+  a.exam.approved=true; a.result=resultFromGrade(a,a.exam); a.status='result'; a.updatedAt=nowISO(); logEvent('Approved & published exam result for '+(a.data.f_name||''));
   a.logs.push({at:nowISO(),action:'Exam result approved & published to student'});
   DB.write('apps',apps); toast('Result published to the student','ok'); render();
 }
 function approveAllExamResults(eid){
   const apps=DB.read('apps',[]); let n=0;
   apps.forEach(a=>{ if(a.eventId===eid && a.exam && !a.exam.approved){ a.exam.approved=true; a.result=resultFromGrade(a,a.exam); a.status='result'; a.updatedAt=nowISO(); a.logs.push({at:nowISO(),action:'Exam result approved & published (bulk)'}); n++; } });
+  logEvent('Approved & published '+n+' exam result(s)');
   if(!n){ toast('Nothing to approve — grade applicants first','warn'); return; }
   DB.write('apps',apps); toast(`Published ${n} result(s) to students`,'ok'); render();
 }
@@ -5637,6 +5639,55 @@ function openUrgent(){ const items=urgentItems();
     <div class="mf"><button class="btn primary" data-x>Close</button></div>`,{lg:true});
 }
 
+/* ============================================================================
+   SIS PHASE 9 — automatic local backups (stored in this browser), 30-day
+   retention with auto-pruning, restore / download from Settings.
+   ============================================================================ */
+
+if(typeof BACKUP_KEYS!=='undefined' && !BACKUP_KEYS.includes('attend')) BACKUP_KEYS.push('attend');
+
+const BACKUP_RETAIN_DAYS=30;
+function snapshotData(){ const data={}; BACKUP_KEYS.forEach(k=>{ data[k]=DB.read(k,null); }); return data; }
+function pruneBackups(list){ const cutoff=Date.now()-BACKUP_RETAIN_DAYS*86400000;
+  let out=list.filter(b=>new Date(b.at).getTime()>=cutoff);   // auto-delete snapshots older than 30 days
+  if(out.length>60) out=out.slice(0,60);
+  return out; }
+function autoBackup(force){
+  try{
+    const c=cfg(); const every=(c.backupEveryH||24)*3600000; const last=c.autoBackupAt?new Date(c.autoBackupAt).getTime():0;
+    if(!force && Date.now()-last<every) return;            // not due yet
+    let list=DB.read('backups',[]);
+    list.unshift({id:uid('bk'),at:nowISO(),by:(currentStaff()||{}).name||'system',data:snapshotData()});
+    list=pruneBackups(list);
+    try{ DB.write('backups',list); }
+    catch(e){ while(list.length>3){ list.pop(); try{ DB.write('backups',list); break; }catch(_){} } }   // quota → keep fewer
+    setCfg({autoBackupAt:nowISO(),backupLastAt:nowISO()});
+    if(!force) toast('Auto-backup saved locally','ok');
+    notify('admin',{title:'Auto-backup saved',body:'A local backup was saved. Older than '+BACKUP_RETAIN_DAYS+' days are removed automatically.'});
+    logEvent('Auto-backup saved ('+list.length+' kept)');
+  }catch(_){}
+}
+function backupNow(){ autoBackup(true); toast('Backup saved locally','ok'); render(); }
+function localBackupsPanel(){ let list=DB.read('backups',[]); list=pruneBackups(list); DB.write('backups',list);
+  return `<div class="panel" style="margin-top:16px"><div class="ph"><h2>Local auto-backups</h2><span class="chip muted">${list.length}</span><div class="spacer"></div>
+      <button class="btn primary sm" onclick="backupNow()">Back up now</button></div>
+    <div class="pb"><p class="hint" style="margin-top:0">The system automatically saves a full snapshot of all data to this browser on a schedule (every ${cfg().backupEveryH||24}h) and keeps the last <b>${BACKUP_RETAIN_DAYS} days</b>, deleting older snapshots automatically. Restore any point, or download it as a file for off-device safety.</p>
+      ${list.length?`<div class="tablewrap"><table class="tbl"><thead><tr><th>Saved</th><th>By</th><th>Size</th><th></th></tr></thead><tbody>
+        ${list.map(b=>{ const sz=Math.round(JSON.stringify(b.data).length/1024); return `<tr><td>${fmtDT(b.at)}</td><td class="sub">${esc(b.by||'system')}</td><td class="sub">${sz} KB</td>
+          <td><div class="rowacts"><button class="btn sm subtle" onclick="restoreLocalBackup('${b.id}')">Restore</button><button class="btn sm ghost" onclick="downloadLocalBackup('${b.id}')">Download</button><button class="iconbtn" onclick="deleteLocalBackup('${b.id}')">${I.trash}</button></div></td></tr>`; }).join('')}
+      </tbody></table></div>`:'<p class="hint">No local backups yet — the first one is saved automatically, or click “Back up now”.</p>'}
+    </div></div>`;
+}
+function restoreLocalBackup(id){ const b=DB.read('backups',[]).find(x=>x.id===id); if(!b)return;
+  confirmDelete({title:'Restore this backup?',body:`Restoring the snapshot from <b>${fmtDT(b.at)}</b> replaces all current data with that point. (Your current state is itself backed up first.)`,confirmText:'Restore',danger:false,onYes:()=>{
+    autoBackup(true);   // snapshot current state before overwriting
+    BACKUP_KEYS.forEach(k=>{ if(b.data[k]!=null) DB.write(k,b.data[k]); });
+    logEvent('Restored local backup from '+fmtDT(b.at)); toast('Backup restored','ok'); go('/'); render();
+  }}); }
+function downloadLocalBackup(id){ const b=DB.read('backups',[]).find(x=>x.id===id); if(!b)return;
+  dl('campus-desk-backup-'+String(b.at).slice(0,10)+'.json', new Blob([JSON.stringify(b.data,null,2)],{type:'application/json'})); logEvent('Downloaded a local backup'); }
+function deleteLocalBackup(id){ DB.write('backups',DB.read('backups',[]).filter(x=>x.id!==id)); toast('Backup removed','warn'); render(); }
+
 /* ============================ DELETE → TRASH → PURGE ============================ */
 function askDeleteEvent(id){
   const e=DB.read('events',[]).find(x=>x.id===id);
@@ -5645,7 +5696,7 @@ function askDeleteEvent(id){
     confirmText:'Move to Trash', onYes:()=>{
       const events=DB.read('events',[]); const apps=DB.read('apps',[]); const trash=DB.read('trash',[]);
       const relApps=apps.filter(a=>a.eventId===id);
-      trash.unshift({id:uid('tr'),kind:'event',label:e.title,deletedAt:nowISO(),payload:{event:e,apps:relApps}});
+      trash.unshift({id:uid('tr'),kind:'event',label:e.title,deletedAt:nowISO(),by:(currentStaff()||{}).name||'',payload:{event:e,apps:relApps}}); logEvent('Deleted '+(e.category==='entrance_exam'?'entrance exam':'event')+' '+e.title);
       DB.write('events',events.filter(x=>x.id!==id));
       DB.write('apps',apps.filter(a=>a.eventId!==id));
       DB.write('trash',trash); toast('Moved to Trash','warn');
@@ -5657,7 +5708,7 @@ function askDeleteEntry(id){
   confirmDelete({title:'Delete entry?',body:`<b>${esc(a.data.f_name||'This entry')}</b> will be moved to Trash. You can restore it later or delete it permanently.`,
     confirmText:'Move to Trash', onYes:()=>{
       const apps=DB.read('apps',[]); const trash=DB.read('trash',[]);
-      trash.unshift({id:uid('tr'),kind:'entry',label:(a.data.f_name||'Entry')+(a.symbol?(' · '+a.symbol):''),deletedAt:nowISO(),payload:{app:a}});
+      trash.unshift({id:uid('tr'),kind:'entry',label:(a.data.f_name||'Entry')+(a.symbol?(' · '+a.symbol):''),deletedAt:nowISO(),by:(currentStaff()||{}).name||'',payload:{app:a}}); logEvent('Deleted entry '+(a.data.f_name||''));
       DB.write('apps',apps.filter(x=>x.id!==id)); DB.write('trash',trash); toast('Moved to Trash','warn'); render();
     }});
 }
@@ -5893,7 +5944,7 @@ function emptyState(title,body,cta,onclick){
 function panelWrap(title,inner){ return `<div class="panel"><div class="ph"><h2>${esc(title)}</h2></div><div class="pb flush">${inner}</div></div>`; }
 
 /* ============================ boot ============================ */
-window.__editId=null;+0
+window.__editId=null;
 render();
 </script>
 </body>
