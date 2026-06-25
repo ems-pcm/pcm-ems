@@ -5918,11 +5918,11 @@ function syncCfg(){ return DB.read('syncCfg',{url:'',room:'',auto:false})||{url:
 function saveSyncCfg(){ const c={url:$('#syUrl').value.trim(),room:$('#syRoom').value.trim(),auto:$('#syAuto').checked}; DB.write('syncCfg',c); toast('Sync settings saved','ok'); render(); }
 function syncEndpoint(){ const c=syncCfg(); if(!c.url||!c.room)return null; return c.url.replace(/\/+$/,'')+'/'+encodeURIComponent(c.room); }
 async function syncPush(){ const url=syncEndpoint(); if(!url){toast('Configure a sync URL & room first','warn');return;} try{
-  const data=snapshotData(); const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({at:nowISO(),data})});
+  const data=snapshotData(); const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({at:nowISO(),data})});
   if(!res.ok)throw 0; setCfg({syncPushedAt:nowISO()}); logEvent('Pushed data to cloud sync'); toast('Data pushed to cloud','ok'); render();
 }catch(_){ toast('Push failed — check the URL/room and that your endpoint accepts POST JSON','bad'); } }
 async function syncPushSilent(){ try{ const c=syncCfg(); if(!c.url||!c.room)return false; const url=syncEndpoint();
-  const data=snapshotData(); const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({at:nowISO(),data})});
+  const data=snapshotData(); const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({at:nowISO(),data})});
   if(res.ok){ setCfg({syncPushedAt:nowISO()}); return true; } return false;
 }catch(_){ return false; } }
 async function syncPullSilent(){ try{ const c=syncCfg(); if(!c.url||!c.room)return false; const url=syncEndpoint();
