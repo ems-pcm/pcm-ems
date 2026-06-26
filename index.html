@@ -4837,7 +4837,7 @@
       write(k, v) { localStorage.setItem('cd_' + k, JSON.stringify(v)); try { scheduleAutoPush(); } catch (_) { } },
     };
     let __autoPushTimer = null;
-    function scheduleAutoPush() { clearTimeout(__autoPushTimer); __autoPushTimer = setTimeout(() => { try { syncPushSilent(); } catch (_) { } }, 1200); }
+    function scheduleAutoPush() { if (!DB.read('session', null)) return; clearTimeout(__autoPushTimer); __autoPushTimer = setTimeout(() => { try { syncPushSilent(); } catch (_) { } }, 1200); }
     function seed() {
       if (!DB.read('admin', null)) DB.write('admin', { username: 'admin', password: 'admin123', name: 'Administrator' });
       if (!DB.read('events', null)) DB.write('events', []);
@@ -4917,7 +4917,7 @@
       try { if (!$('#authModalBg')?.classList.contains('show')) document.body.style.overflow = ''; } catch (_) { }
       routeRender();
       setTimeout(() => { try { paintInlineQR(); } catch (_) { } try { enhanceTables(); } catch (_) { } try { maybeAutoPull(); } catch (_) { } }, 0);
-      try { if (DB.read('session', null) && isSuper()) autoBackup(); } catch (_) { }
+      try { if (DB.read('session', null) && isSuper()) autoBackup(); } catch (_) { } try{ pollPublicInbox(); }catch(_){}
     }
     function routeRender() {
       const r = route();
@@ -4925,7 +4925,7 @@
       if (r.startsWith('/r/')) {
         const [path, qs] = r.split('?'); const parts = path.split('/'); const pi = parts.indexOf('p'); const prog = (pi >= 0) ? decodeURIComponent(parts[pi + 1] || '') : '';
         let payload = null; if (qs) { const mm = qs.match(/(?:^|&)d=([^&]+)/); if (mm) { const j = b64urlDec(decodeURIComponent(mm[1])); if (j) { try { payload = JSON.parse(j); } catch (_) { } } } }
-        if (qs) { const sm = qs.match(/(?:^|&)sy=([^&]+)/); if (sm) { try { const sj = b64urlDec(decodeURIComponent(sm[1])); const sc = JSON.parse(sj); if (sc && sc.u && sc.r) { const cur = syncCfg(); if (cur.url !== sc.u || cur.room !== sc.r || !cur.auto) { DB.write('syncCfg', { url: sc.u, room: sc.r, auto: true }); window.__pulledOnce = false; } } } catch (_) { } } }
+        if (qs && DB.read('session', null)) { const sm = qs.match(/(?:^|&)sy=([^&]+)/); if (sm) { try { const sj = b64urlDec(decodeURIComponent(sm[1])); const sc = JSON.parse(sj); if (sc && sc.u && sc.r) { const cur = syncCfg(); if (cur.url !== sc.u || cur.room !== sc.r || !cur.auto) { DB.write('syncCfg', { url: sc.u, room: sc.r, auto: true }); window.__pulledOnce = false; } } } catch (_) { } } }
         return renderPublic(parts[2], prog, payload);
       }
       // STUDENT portal (separate dashboard)
@@ -5407,6 +5407,7 @@
     </div></div>
     ${localBackupsPanel()}
     ${syncPanel()}
+    ${publicCollectPanel()}
   </div>`;
     }
     function saveBrand() {
@@ -5754,7 +5755,7 @@
       const e = DB.read('events', []).find(x => x.id === id);
       const qs = [];
       if (e) { const d = encodeForm(e); if (d && d.length <= 1100) { qs.push('d=' + d); } } // embed when small enough to scan reliably
-      const sc = syncCfg(); if (sc.url && sc.room) { qs.push('sy=' + b64urlEnc(JSON.stringify({ u: sc.url, r: sc.room }))); }
+      const _ib = inboxLinkParam(); if (_ib) qs.push(_ib); // write-only submit endpoint only (no admin key, no full-sync config)
       if (qs.length) url += '?' + qs.join('&');
       return url;
     }
@@ -8502,6 +8503,7 @@
     }
     async function syncPushSilent() {
       try {
+        if (!DB.read('session', null)) return false;
         const c = syncCfg(); if (!c.url || !c.room) return false; const url = syncEndpoint();
         const data = snapshotData(); const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ at: nowISO(), data }) });
         if (res.ok) { setCfg({ syncPushedAt: nowISO() }); return true; } return false;
@@ -8550,7 +8552,77 @@
       <p class="hint" style="margin-top:10px">Once saved with <b>live sync</b> on: every add/edit on any device (admin, staff, or a student's phone applying for entrance) pushes to the shared sheet automatically, and every open dashboard pulls the latest every 15 seconds — no manual push/pull needed. Set the exact same URL &amp; room on every device/browser. If you never configure this, the app keeps working exactly as before, fully offline on that one device.</p>
     </div></div>`;
     }
-    function maybeAutoPull() { try { const c = syncCfg(); if (c.auto && c.url && c.room) { if (!window.__pulledOnce) { window.__pulledOnce = true; syncPullSilent(); } startAutoSyncLoop(); } } catch (_) { } }
+    function maybeAutoPull() { try { if (!DB.read('session', null)) return; const c = syncCfg(); if (c.auto && c.url && c.room) { if (!window.__pulledOnce) { window.__pulledOnce = true; syncPullSilent(); } startAutoSyncLoop(); } } catch (_) { } }
+
+/* ============================================================================
+   SIS PHASE 11 — secure PUBLIC INBOX (collect public submissions from anywhere).
+   Visitors can only APPEND one submission (write-only). Only the admin, holding
+   a secret read key, can fetch them. Public devices never push or read the full
+   dataset, so admin data can't be overwritten or leaked.
+   ============================================================================ */
+
+function inboxCfg(){ return DB.read('inboxCfg',{url:'',key:'',token:''})||{url:'',key:'',token:''}; }
+function saveInboxCfg(){ const c={url:($('#ibUrl').value||'').trim().replace(/\/+$/,''), key:($('#ibKey').value||'').trim(), token:($('#ibTok').value||'').trim()}; DB.write('inboxCfg',c); toast('Public collection settings saved','ok'); render(); }
+
+/* public devices learn ONLY the write endpoint (+optional submit token) from the QR link param `ib`. Never the admin read key. */
+function inboxFromUrl(){ try{ const qs=(location.hash.split('?')[1]||''); const mm=qs.match(/(?:^|&)ib=([^&]+)/); if(!mm)return null; const j=JSON.parse(b64urlDec(decodeURIComponent(mm[1]))); return (j&&j.u)?{url:String(j.u).replace(/\/+$/,''),token:j.t||''}:null; }catch(_){ return null; } }
+function publicInbox(){ const u=inboxFromUrl(); if(u)return u; const c=inboxCfg(); return c.url?{url:c.url,token:c.token}:null; }
+function inboxLinkParam(){ const c=inboxCfg(); if(!c.url)return ''; return 'ib='+b64urlEnc(JSON.stringify({u:c.url,t:c.token||''})); }
+
+/* ----- public side: append one submission (write-only, fire-and-forget) ----- */
+async function postPublicSubmission(kind, record){ try{ const ib=publicInbox(); if(!ib||typeof fetch==='undefined')return false;
+  const res=await fetch(ib.url+'/submit',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({token:ib.token||'', kind, record, at:nowISO()})});
+  return !!(res&&res.ok);
+}catch(_){ return false; } }
+
+/* ----- admin side: pull new submissions with the secret key, then merge ----- */
+async function pullPublicSubmissions(silent){ const c=inboxCfg();
+  if(!c.url||!c.key){ if(!silent)toast('Set the inbox URL and admin read key first','warn'); return; }
+  if(typeof fetch==='undefined'){ if(!silent)toast('Network not available here','warn'); return; }
+  try{ const since=Number(cfg().inboxSince||0);
+    const res=await fetch(c.url+'/list?key='+encodeURIComponent(c.key)+'&since='+encodeURIComponent(since),{headers:{'Accept':'application/json'}});
+    if(!res.ok){ if(!silent)toast(res.status===401?'Wrong admin key':'Collection server error','bad'); return; }
+    const j=await res.json(); const list=Array.isArray(j)?j:(j.items||j.records||[]);
+    const n=mergePublicRecords(list);
+    if(list.length){ const maxSeq=Math.max(since,...list.map(x=>Number(x.seq||x.id||0)).filter(v=>!isNaN(v))); if(isFinite(maxSeq))setCfg({inboxSince:maxSeq, inboxPulledAt:nowISO()}); }
+    if(!silent)toast(n?`Imported ${n} new public submission(s)`:'No new submissions','ok'); if(n)render();
+  }catch(_){ if(!silent)toast('Could not reach the collection server — check the URL','bad'); } }
+
+function mergePublicRecords(list){ if(!list||!list.length)return 0;
+  const apps=DB.read('apps',[]); const seen=new Set(apps.map(a=>a.remoteId).filter(Boolean)); let n=0;
+  list.forEach(item=>{ const rid=String(item.id||item.seq||''); const kind=item.kind||'application'; let rec=item.record||item.payload||item;
+    if(rid && seen.has(rid))return;
+    if(kind==='application'){ const a=Object.assign({},rec); a.remoteId=rid||uid('rid'); if(!a.id)a.id=uid('app');
+      if(!a.status)a.status='submitted'; if(!a.createdAt)a.createdAt=item.at||nowISO(); a.updatedAt=nowISO();
+      if(!a.logs)a.logs=[{at:(item.at||nowISO()),action:'Received online from public submission'}];
+      apps.push(a); seen.add(a.remoteId); n++; }
+    else if(kind==='attendance'){ const a=apps.find(x=>x.symbol&&rec.symbol&&String(x.symbol).toLowerCase()===String(rec.symbol).toLowerCase()); if(a){ a.status=rec.absent?'absent':'present'; a.remotePresentId=rid; n++; } }
+  });
+  if(n)DB.write('apps',apps);
+  if(n)logEvent('Imported '+n+' public submission(s) from collection server');
+  return n; }
+
+/* throttled auto-poll for the admin while signed in */
+function pollPublicInbox(){ try{ const c=inboxCfg(); if(!DB.read('session',null)||!c.url||!c.key)return;
+  const last=window.__inboxPollAt||0; if(Date.now()-last<20000)return; window.__inboxPollAt=Date.now(); pullPublicSubmissions(true);
+}catch(_){} }
+
+/* settings panel */
+function publicCollectPanel(){ const c=inboxCfg(); const link=inboxLinkParam();
+  return `<div class="panel" style="margin-top:16px"><div class="ph"><h2>Public data collection (server)</h2>${c.url?'<span class="chip ok">on</span>':'<span class="chip muted">off</span>'}<div class="spacer"></div>${c.url&&c.key?`<button class="btn primary sm" onclick="pullPublicSubmissions(false)">⬇ Fetch submissions now</button>`:''}</div>
+    <div class="pb"><p class="hint" style="margin-top:0">A site on GitHub Pages can’t store data, and each browser keeps its own copy — that’s why submissions made on a visitor’s phone don’t reach you. Point the app at a tiny <b>inbox server</b> you control: visitors can only <b>add</b> a submission (write-only), and only you, with the <b>admin read key</b>, can fetch them. Your full data never leaves the admin device.</p>
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <div class="field"><label>Inbox server URL</label><input class="input" id="ibUrl" value="${esc(c.url)}" placeholder="https://your-worker.workers.dev"></div>
+        <div class="field"><label>Admin read key (keep secret)</label><input class="input" id="ibKey" value="${esc(c.key)}" placeholder="a long random secret"></div>
+        <div class="field"><label>Submit token (optional, anti-spam)</label><input class="input" id="ibTok" value="${esc(c.token)}" placeholder="shared token put in QR links"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn ghost sm" onclick="saveInboxCfg()">Save settings</button>
+      </div>
+      ${c.url?`<p class="hint" style="margin-top:10px"><b>Important:</b> after saving, re-open each entrance exam and regenerate its QR / share link — the new links carry your <i>write-only</i> submit endpoint so visitors’ phones know where to send applications. The admin read key is never put in any link.${c.inboxPulledAt?` Last fetched ${fmtDT(cfg().inboxPulledAt)}.`:''}</p>`:''}
+    </div></div>`;
+}
 
     /* ============================ DELETE → TRASH → PURGE ============================ */
     function askDeleteEvent(id) {
@@ -8747,7 +8819,7 @@
       const e = DB.read('events', []).find(x => x.id === eventId);
       const data = collectInputs($('#pubForm').closest('.public'));
       for (const f of allFieldsFor(e)) { if (f.required && !String(data[f.id] || '').trim() && f.type !== 'file') { toast('Please fill: ' + f.label, 'bad'); return; } }
-      const apps = DB.read('apps', []); apps.push(newApplicant(e, data, '', 'public')); DB.write('apps', apps);
+      const apps = DB.read('apps', []); const _ap = newApplicant(e, data, '', 'public'); apps.push(_ap); DB.write('apps', apps); postPublicSubmission('application', _ap);
       $('.public .wrap').innerHTML = `<div class="panel"><div class="pb" style="text-align:center;padding:40px">
     <div class="empty"><div class="big" style="background:var(--ok-bg);color:var(--ok)">✓</div>
     <h3>${e.category === 'college_event' ? 'You’re registered!' : 'Attendance recorded'}</h3>
@@ -8824,7 +8896,7 @@
       if (__applicantPhoto) data.f_photo = __applicantPhoto;
       const apps = DB.read('apps', []); const ap = newApplicant(e, data, prog, 'public'); apps.push(ap); DB.write('apps', apps);
       __applicantPhoto = ''; DB.write('pubState', { appId: ap.id }); renderEntrancePortal(e);
-      syncPushSilent();
+      postPublicSubmission('application', ap);
       toast('Application submitted', 'ok');
     }
     function validApplicant(data) {
