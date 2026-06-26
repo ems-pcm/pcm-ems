@@ -2452,21 +2452,6 @@ textarea.input{min-height:92px;resize:vertical}
 .stat .v{font-family:var(--font-d);font-size:30px;font-weight:700;margin-top:8px;letter-spacing:-.02em}
 .stat .s{font-size:12px;color:var(--muted);margin-top:2px}
 .stat .ic{width:30px;height:30px;border-radius:9px;background:var(--brand-tint);color:var(--brand-700);display:grid;place-items:center}
-.card.stat{position:relative;transition:transform .15s ease,box-shadow .15s ease}
-.card.stat:hover{transform:translateY(-2px);box-shadow:0 10px 22px -10px rgba(19,33,31,.18)}
-.card.stat.hl{border:1px solid var(--brand);background:linear-gradient(160deg,var(--brand-tint) 0%,#fff 70%)}
-.card.stat.hl::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;border-radius:14px 0 0 14px;background:var(--brand)}
-.card.stat.hl.warn{border-color:#e0a829;background:linear-gradient(160deg,#fff6e0 0%,#fff 70%)}
-.card.stat.hl.warn::before{background:#e0a829}
-.card.stat.hl.bad{border-color:#c0392b;background:linear-gradient(160deg,#fdecea 0%,#fff 70%)}
-.card.stat.hl.bad::before{background:#c0392b}
-.card.stat.hl.ok{border-color:#1a9b6e;background:linear-gradient(160deg,#e8f8f0 0%,#fff 70%)}
-.card.stat.hl.ok::before{background:#1a9b6e}
-.minichart{padding:4px 2px}
-.minichart svg{display:block;width:100%;height:auto}
-.minichart .mc-bar{transition:opacity .15s ease}
-.minichart .mc-bar:hover{opacity:.75}
-.minichart .mc-empty{text-align:center;color:var(--muted);font-size:13px;padding:30px 0}
 
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
 .panel .ph{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line-2)}
@@ -2591,32 +2576,6 @@ table.tbl tr:hover td{background:var(--brand-tint-2)}
   .homebody{padding:0 16px 60px}
   .homecard{padding:22px 18px}
 }
-html{scroll-behavior:smooth}
-.homehero{position:relative;overflow:hidden}
-.homehero::before,.homehero::after{content:'';position:absolute;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none}
-.homehero::before{width:340px;height:340px;top:-160px;right:-80px}
-.homehero::after{width:220px;height:220px;bottom:-120px;left:-60px}
-.homehero .tag,.homehero h1,.homehero p,.homehero .cta{position:relative;z-index:1}
-.homehero .cta a{transition:transform .15s ease,box-shadow .15s ease}
-.homehero .cta a:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(0,0,0,.2)}
-.homenav .btn.primary{transition:transform .15s ease}
-.homenav .btn.primary:hover{transform:translateY(-1px)}
-.featgrid .fc{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;cursor:default}
-.featgrid .fc:hover{transform:translateY(-4px);box-shadow:0 14px 28px -12px rgba(19,33,31,.22);border-color:var(--brand)}
-.featgrid .fc .ico{transition:transform .18s ease}
-.featgrid .fc:hover .ico{transform:scale(1.12) rotate(-4deg)}
-.reveal{opacity:0;transform:translateY(22px);transition:opacity .55s ease,transform .55s ease}
-.reveal.in{opacity:1;transform:translateY(0)}
-#signin.homecard{transition:transform .18s ease,box-shadow .18s ease}
-#signin.homecard:hover{transform:translateY(-3px);box-shadow:0 18px 36px -16px rgba(19,33,31,.25)}
-
-/* Sign-in modal */
-.modalbg{position:fixed;inset:0;background:rgba(15,25,23,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px;z-index:200;opacity:0;visibility:hidden;transition:opacity .2s ease}
-.modalbg.show{opacity:1;visibility:visible}
-.authmodal{position:relative;transform:translateY(14px) scale(.97);transition:transform .22s ease;max-width:420px;width:100%}
-.modalbg.show .authmodal{transform:translateY(0) scale(1)}
-.modalx{position:absolute;top:14px;right:14px;border:none;background:var(--line-2);width:30px;height:30px;border-radius:9px;font-size:14px;cursor:pointer;color:var(--ink-2)}
-.modalx:hover{background:var(--line)}
 
 .public{min-height:100vh;background:radial-gradient(1000px 480px at 50% -12%, var(--brand-tint) 0, transparent 55%), var(--bg);padding:0 0 60px}
 .public .pbar{background:#fff;border-bottom:1px solid var(--line);padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:30}
@@ -2883,7 +2842,6 @@ function route(){ return (location.hash||'#/').replace(/^#/,''); }
 function go(path){ location.hash = path; }
 function render(){
   try{ document.title=brandName(); }catch(_){}
-  try{ if(!$('#authModalBg')?.classList.contains('show')) document.body.style.overflow=''; }catch(_){}
   routeRender();
   setTimeout(()=>{ try{paintInlineQR();}catch(_){} try{enhanceTables();}catch(_){} try{maybeAutoPull();}catch(_){} },0);
   try{ if(DB.read('session',null)&&isSuper()) autoBackup(); }catch(_){}
@@ -3008,15 +2966,12 @@ function viewDashboard(){
   const entrances=events.filter(e=>e.category==='entrance_exam').length;
   const recent=[...apps].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,6);
   const stat=(k,v,s,ic)=>`<div class="card stat"><div class="k"><span class="ic">${ic}</span>${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
-  const days=[...Array(7)].map((_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(6-i)); return d; });
-  const dayCounts=days.map(d=>{ const key=d.toISOString().slice(0,10); return apps.filter(a=>String(a.createdAt||'').slice(0,10)===key).length; });
-  const dayLabels=days.map(d=>d.toLocaleDateString(undefined,{weekday:'short'}).slice(0,2));
   return `
   <div class="cards">
     ${stat('Total events',events.length,'All categories','📅')}
     ${stat('Entrance exams',entrances,'Admission cycles','📝')}
     ${stat('Registrations',apps.length,'People in the system','👥')}
-    <div class="card stat hl ${pending?'warn':'ok'}"><div class="k"><span class="ic">⏳</span>Pending approvals</div><div class="v">${pending}</div><div class="s">${pending?'Needs your action':'All clear'}</div></div>
+    ${stat('Pending approvals',pending,pending?'Needs your action':'All clear','⏳')}
   </div>
   <div class="grid" style="grid-template-columns:1.4fr 1fr;margin-top:16px">
     <div class="panel">
@@ -3048,13 +3003,12 @@ function viewDashboard(){
     </div>
   </div>
   <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:16px;gap:16px">
-    <div class="panel"><div class="ph"><h2>Registrations — last 7 days</h2></div><div class="pb">${miniBarChart(dayCounts,dayLabels)}</div></div>
     <div class="panel"><div class="ph"><h2>Academics at a glance</h2></div><div class="pb"><div class="cards" style="grid-template-columns:1fr 1fr">
       ${stat('Programs',DB.read('programs',[]).length,'Academic programs','📚')}
       ${stat('Students',DB.read('students',[]).length,'Enrolled','🎓')}
     </div></div></div>
-  </div>
-  <div class="grid" style="margin-top:16px">${calendarWidget('')}</div>`;
+    ${calendarWidget('')}
+  </div>`;
 }
 
 /* ============================ EVENTS ============================ */
@@ -4719,7 +4673,7 @@ function studentLogin(){ const u=$('#suUser').value.trim(); const p=$('#suPass')
   const st=DB.read('students',[]).find(x=>norm(x.username||x.symbol)===norm(u) && norm(x.password)===norm(p));
   if(!st){ toast('Invalid student login — check your Symbol No and Date of birth (YYYY-MM-DD)','bad'); return; }
   if(st.approved===false){ toast('Your account is awaiting admin approval','warn'); return; }
-  DB.write('sSession',{studentId:st.id,at:nowISO()}); DB.write('session',null); logEvent('Student signed in',st.programId); closeAuthModal(); go('/me'); render(); toast('Welcome, '+st.name,'ok');
+  DB.write('sSession',{studentId:st.id,at:nowISO()}); DB.write('session',null); logEvent('Student signed in',st.programId); go('/me'); render(); toast('Welcome, '+st.name,'ok');
 }
 function studentLogout(){ logEvent('Student signed out'); DB.write('sSession',null); go('/'); render(); }
 function renderStudentApp(r){ const st=currentStudent(); if(!st){ DB.write('sSession',null); return renderAuth(); }
@@ -4752,22 +4706,16 @@ function studentView(st,tab,sem){
   const pid=st.programId; const cur=st.semester||1; sem=Math.min(Number(sem)||cur, cur);   // students never see above their running semester
   if(tab==='home'){ const due=studentDue(st.id); const p=progById(pid);
     const next=DB.read('acad',[]).filter(x=>x.type==='exam'&&x.programId===pid&&Number(x.semester)===cur).sort((a,b)=>String(a.date).localeCompare(String(b.date)))[0];
-    const months=[...Array(6)].map((_,i)=>{ const d=new Date(); d.setMonth(d.getMonth()-(5-i)); return d; });
-    const absRecs=DB.read('attend',[]).filter(a=>a.studentId===st.id&&a.absent);
-    const monthCounts=months.map(d=>{ const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); return absRecs.filter(a=>monthKey(a.date)===mk).length; });
-    const monthLabels=months.map(d=>d.toLocaleDateString(undefined,{month:'short'}));
     return `<div class="cards">
       ${statCard('Program',esc(p?p.name:'—'),'📚')}${statCard('Semester','Sem '+cur,'🎚')}
-      <div class="card stat hl ${due>0?'warn':'ok'}"><div class="k"><span class="ic">${due>0?'⚠️':'✅'}</span>Fees due</div><div class="v">${due>0?String(due):'Clear'}</div><div class="s">${due>0?'Please clear soon':'All paid up'}</div></div>
-      ${statCard('Symbol',esc(st.symbol||'—'),'🆔')}
+      ${statCard('Fees due',due>0?String(due):'Clear',due>0?'⚠️':'✅')}${statCard('Symbol',esc(st.symbol||'—'),'🆔')}
     </div>
     <div class="grid" style="grid-template-columns:1.3fr 1fr;margin-top:16px;gap:16px">
       <div class="panel"><div class="ph"><h2>Welcome, ${esc(st.name)}</h2></div>
         <div class="pb"><p class="hint" style="margin-top:0">See your courses & syllabus, teachers, fees, class & exam schedules, internal marks and the academic calendar. You can view your current and past semesters.</p>
         ${next?`<div class="card">Next exam: <b>${esc(next.course)}</b> — ${esc(next.date||'TBA')} ${esc(next.time||'')} ${esc(next.shift||'')}</div>`:''}</div></div>
       ${calendarWidget(pid,cur)}
-    </div>
-    <div class="panel" style="margin-top:16px"><div class="ph"><h2>Absences — last 6 months</h2></div><div class="pb">${miniBarChart(monthCounts,monthLabels,{color:'#e0a829'})}</div></div>`;
+    </div>`;
   }
   if(tab==='courses'){ const rows=acadList('course',pid,sem);
     return panelWrap('Courses & syllabus — Semester '+sem, rows.length?`<div class="tablewrap"><table class="tbl"><thead><tr><th>Code</th><th>Title</th><th>Credit</th><th>Teacher</th><th>Syllabus</th></tr></thead><tbody>
@@ -4827,18 +4775,6 @@ function showDayStudent(date,pid,cur){ const list=calVisibleStudent(pid,cur).fil
     <div class="mf"><button class="btn primary" data-x>Close</button></div>`,{lg:true});
 }
 function statCard(label,val,icon){ return `<div class="card stat"><div class="k"><span class="ic">${icon}</span>${label}</div><div class="v">${val}</div></div>`; }
-function miniBarChart(values, labels, opts={}){
-  const w=720,h=opts.h||140,pad=24,n=values.length;
-  if(!n) return `<div class="minichart"><div class="mc-empty">Not enough data yet</div></div>`;
-  const max=Math.max(1,...values);
-  const bw=(w-pad*2)/n*0.62, gap=(w-pad*2)/n;
-  const color=opts.color||'var(--brand)';
-  const bars=values.map((v,i)=>{ const bh=Math.max(2,(v/max)*(h-pad*2)); const x=pad+i*gap+(gap-bw)/2; const y=h-pad-bh;
-    return `<rect class="mc-bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="${color}"><title>${esc(String(labels?labels[i]:i+1))}: ${v}</title></rect>
-      <text x="${(x+bw/2).toFixed(1)}" y="${h-6}" text-anchor="middle" font-size="10" fill="var(--muted)">${esc(String(labels?labels[i]:i+1))}</text>`;
-  }).join('');
-  return `<div class="minichart"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${bars}</svg></div>`;
-}
 
 /* ============================================================================
    SIS PHASE 2 — exam categories, teachers, timetable grid, shift exams,
@@ -5235,7 +5171,7 @@ function coordDashboard(){ const me=currentStaff(); const progs=scopedPrograms()
   return `<div class="cards">
       ${stat('My programs',progs.length,'Assigned to you','📚')}
       ${stat('My students',students.length,'Enrolled','🎓')}
-      <div class="card stat hl ${lowMarks?'bad':'ok'}"><div class="k"><span class="ic">⚠️</span>Low-mark alerts</div><div class="v">${lowMarks}</div><div class="s">${lowMarks?'Need attention':'All good'}</div></div>
+      ${stat('Low-mark alerts',lowMarks,lowMarks?'Need attention':'All good','⚠️')}
       ${stat('Role','Coordinator','Scoped access','🧑‍💼')}
     </div>
     <div class="grid" style="grid-template-columns:1.3fr 1fr;margin-top:16px;gap:16px">
@@ -6112,7 +6048,7 @@ function renderAuth(){
         <a href="#data">Your data</a>
         <a href="privacy-policy" target="_blank" rel="noopener">Privacy</a>
         <a href="terms-of-service.html" target="_blank" rel="noopener">Terms</a>
-        <a href="javascript:void(0)" class="btn primary sm" style="color:#fff" onclick="openAuthModal()">Sign in</a>
+        <a href="#signin" class="btn primary sm" style="color:#fff">Sign in</a>
       </div>
     </div>
 
@@ -6121,50 +6057,50 @@ function renderAuth(){
       <h1>${esc(brandName())}</h1>
       <p>Apply for entrance from anywhere — your phone, tablet, or computer — and let the college manage admissions, attendance, results, and staff access from one dashboard.</p>
       <div class="cta">
-        <a href="javascript:void(0)" onclick="openAuthModal()">Sign in to your account</a>
+        <a href="#signin">Sign in to your account</a>
         <a href="#what" class="ghost">Learn more</a>
       </div>
     </div>
 
     <div class="homebody">
 
-      <div class="homecard reveal" id="what">${whatItDoesContent('admin')}</div>
+      <div class="homecard" id="what">${whatItDoesContent('admin')}</div>
 
-      <div class="homecard reveal" id="data">${dataSectionContent('admin')}
+      <div class="homecard" id="data">
+        <h2>Your data, used transparently</h2>
+        <p class="sub">What we collect, why we collect it, and who can see it</p>
+        <div class="datagrid">
+          <div class="dg-col">
+            <h3>📋 What we collect</h3>
+            <p>When you submit an entrance application, we collect the details you enter yourself — name, date of birth, contact information, a photo (if provided), and academic history.</p>
+            <p>Staff and admin accounts sign in with a username and password issued by the college. <b>${esc(brandName())} does not request access to your Google account, contacts, email, or any other third-party data.</b></p>
+          </div>
+          <div class="dg-col">
+            <h3>👁 Who can see it</h3>
+            <ul>
+              <li>Only the staff a college administrator has explicitly granted access to a feature can view those records.</li>
+              <li>The administrator has full access in order to operate the system.</li>
+              <li>We never sell or share your data with third parties.</li>
+            </ul>
+            <p>Full details are in our <a href="privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.</p>
+          </div>
+        </div>
       </div>
 
-      <div class="homecard reveal" id="signin" style="text-align:center;padding:36px 24px">
-        <h2 style="margin-bottom:8px">Ready to get started?</h2>
-        <p class="sub" style="margin-bottom:18px">Sign in to your admin, staff, or student dashboard</p>
-        <button class="btn primary" style="padding:13px 30px;font-size:14.5px" onclick="openAuthModal()">Sign in</button>
+      <div class="homecard" id="signin" style="max-width:440px;margin:0 auto;padding:0;overflow:hidden">
+        <div class="head" style="padding:26px 28px 8px"><h1 style="font-size:20px;margin:0">Sign in to continue</h1><p style="color:var(--muted);font-size:13.5px;margin:6px 0 0">Access your admin, staff, or student dashboard</p></div>
+        <div class="body" style="padding:18px 28px 28px">
+          <div class="tabs" style="margin-bottom:14px"><button class="active" id="atAdmin" onclick="authTab('admin')">Admin / Coordinator</button><button id="atStudent" onclick="authTab('student')">Student</button></div>
+          <div id="authPane"></div>
+        </div>
       </div>
 
       <p class="homefoot">© ${new Date().getFullYear()} ${esc(brandName())}. All rights reserved. &nbsp;·&nbsp;
         <a href="privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> &nbsp;·&nbsp;
         <a href="terms-of-service.html" target="_blank" rel="noopener">Terms of Service</a></p>
     </div>
-
-    <div class="modalbg" id="authModalBg" onclick="if(event.target===this)closeAuthModal()">
-      <div class="authcard authmodal" role="dialog" aria-modal="true">
-        <button class="modalx" onclick="closeAuthModal()" aria-label="Close">✕</button>
-        <div class="head"><div class="logo">${brandLogo()}</div><h1 style="font-size:20px">Sign in</h1><p>Access your admin, staff, or student dashboard</p></div>
-        <div class="body">
-          <div class="tabs" style="margin-bottom:14px"><button class="active" id="atAdmin" onclick="authTab('admin')">Admin / Coordinator</button><button id="atStudent" onclick="authTab('student')">Student</button></div>
-          <div id="authPane"></div>
-        </div>
-      </div>
-    </div>
   </div>`;
   authTab('admin');
-  initScrollReveal();
-}
-function openAuthModal(){ $('#authModalBg')?.classList.add('show'); document.body.style.overflow='hidden'; setTimeout(()=>$('#lUser')?.focus(),200); }
-function closeAuthModal(){ $('#authModalBg')?.classList.remove('show'); document.body.style.overflow=''; }
-function initScrollReveal(){
-  const els=document.querySelectorAll('.reveal');
-  if(!('IntersectionObserver' in window)){ els.forEach(el=>el.classList.add('in')); return; }
-  const io=new IntersectionObserver((entries)=>{ entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } }); },{threshold:.12});
-  els.forEach(el=>io.observe(el));
 }
 function whatItDoesContent(which){
   if(which==='student'){
@@ -6190,50 +6126,9 @@ function whatItDoesContent(which){
       <div class="fc"><div class="ico">🔒</div><h3>Built-in access control</h3><p>Every action is tied to a signed-in account with permissions set by the administrator, so access stays accountable.</p></div>
     </div>`;
 }
-function dataSectionContent(which){
-  if(which==='student'){
-    return `<h2>Your data, used transparently</h2>
-      <p class="sub">What you share when you apply, and who can see it</p>
-      <div class="datagrid">
-        <div class="dg-col">
-          <h3>📋 What we collect from you</h3>
-          <p>When you apply for entrance, we only collect what you enter yourself — your name, date of birth, contact details, a photo (if asked for), and your academic history — so the college can review your application.</p>
-          <p>Once admitted, your symbol number and date of birth become your login. <b>${esc(brandName())} never asks for your Google account, contacts, email, or any other app's data.</b></p>
-        </div>
-        <div class="dg-col">
-          <h3>👁 Who can see your records</h3>
-          <ul>
-            <li>Only staff the college has specifically given access to admissions, attendance, or results can view your information — not everyone in the office.</li>
-            <li>You can log in anytime to check your own application status, attendance, and results.</li>
-            <li>We never sell or share your data with third parties.</li>
-          </ul>
-          <p>Full details are in our <a href="privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.</p>
-        </div>
-      </div>`;
-  }
-  return `<h2>Your data, used transparently</h2>
-    <p class="sub">What we collect, why we collect it, and who can see it</p>
-    <div class="datagrid">
-      <div class="dg-col">
-        <h3>📋 What we collect</h3>
-        <p>When a student submits an entrance application, we collect the details they enter themselves — name, date of birth, contact information, a photo (if provided), and academic history.</p>
-        <p>Staff and admin accounts sign in with a username and password issued by the college. <b>${esc(brandName())} does not request access to your Google account, contacts, email, or any other third-party data.</b></p>
-      </div>
-      <div class="dg-col">
-        <h3>👁 Who can see it</h3>
-        <ul>
-          <li>Only the staff a college administrator has explicitly granted access to a feature can view those records.</li>
-          <li>The administrator has full access in order to operate the system.</li>
-          <li>We never sell or share data with third parties.</li>
-        </ul>
-        <p>Full details are in our <a href="privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.</p>
-      </div>
-    </div>`;
-}
 function authTab(which){
   $('#atAdmin')?.classList.toggle('active',which==='admin'); $('#atStudent')?.classList.toggle('active',which==='student');
   const what=$('#what'); if(what) what.innerHTML=whatItDoesContent(which);
-  const data=$('#data'); if(data) data.innerHTML=dataSectionContent(which);
   const pane=$('#authPane');
   if(which==='admin'){
     pane.innerHTML=`<div class="field"><label>Username</label><input class="input" id="lUser" placeholder="admin" autofocus></div>
@@ -6250,9 +6145,9 @@ function authTab(which){
 function togglePass(id,btn){ const el=$('#'+id); if(!el)return; const show=el.type==='password'; el.type=show?'text':'password'; btn.textContent=show?'🙈':'👁'; btn.setAttribute('aria-label',show?'Hide password':'Show password'); }
 function doLogin(){ const u=$('#lUser').value.trim(); const p=$('#lPass').value;
   const staff=DB.read('staff',[]); const found=staff.find(s=>s.username.toLowerCase()===u.toLowerCase() && String(s.password)===String(p));
-  if(found){ DB.write('session',{at:nowISO(),staffId:found.id}); DB.write('sSession',null); logEvent((found.role==='super_admin'?'Admin':'Coordinator')+' signed in'); closeAuthModal(); go('/'); render(); toast('Welcome, '+found.name,'ok'); return; }
+  if(found){ DB.write('session',{at:nowISO(),staffId:found.id}); DB.write('sSession',null); logEvent((found.role==='super_admin'?'Admin':'Coordinator')+' signed in'); go('/'); render(); toast('Welcome, '+found.name,'ok'); return; }
   // legacy fallback to old single admin record
-  const a=DB.read('admin',{}); if(u===a.username && p===a.password){ const st=DB.read('staff',[]); const su=st.find(x=>x.role==='super_admin'); DB.write('session',{at:nowISO(),staffId:su?su.id:'su'}); DB.write('sSession',null); logEvent('Admin signed in'); closeAuthModal(); go('/'); render(); toast('Welcome back','ok'); return; }
+  const a=DB.read('admin',{}); if(u===a.username && p===a.password){ const st=DB.read('staff',[]); const su=st.find(x=>x.role==='super_admin'); DB.write('session',{at:nowISO(),staffId:su?su.id:'su'}); DB.write('sSession',null); logEvent('Admin signed in'); go('/'); render(); toast('Welcome back','ok'); return; }
   toast('Invalid username or password','bad'); }
 
 /* ============================ PUBLIC (QR target) ============================ */
