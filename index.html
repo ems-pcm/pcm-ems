@@ -4834,7 +4834,7 @@
     /* ---------- storage ---------- */
     const DB = {
       read(k, def) { try { const v = localStorage.getItem('cd_' + k); return v == null ? def : JSON.parse(v); } catch (e) { return def; } },
-      write(k, v) { localStorage.setItem('cd_' + k, JSON.stringify(v)); try { scheduleAutoPush(); } catch (_) { } },
+      write(k, v) { localStorage.setItem('cd_' + k, JSON.stringify(v)); try { scheduleAutoPush(); } catch (_) { } try { teamPushSoon(); } catch (_) { } },
     };
     let __autoPushTimer = null;
     function scheduleAutoPush() { if (!DB.read('session', null)) return; clearTimeout(__autoPushTimer); __autoPushTimer = setTimeout(() => { try { syncPushSilent(); } catch (_) { } }, 1200); }
@@ -4916,7 +4916,7 @@
       try { document.title = brandName(); } catch (_) { }
       try { if (!$('#authModalBg')?.classList.contains('show')) document.body.style.overflow = ''; } catch (_) { }
       routeRender();
-      setTimeout(() => { try { paintInlineQR(); } catch (_) { } try { enhanceTables(); } catch (_) { } try { maybeAutoPull(); } catch (_) { } }, 0);
+      setTimeout(() => { try { paintInlineQR(); } catch (_) { } try { enhanceTables(); } catch (_) { } try { maybeAutoPull(); } catch (_) { } try { teamTick(); } catch (_) { } }, 0);
       try { if (DB.read('session', null) && isSuper()) autoBackup(); } catch (_) { } try{ pollPublicInbox(); }catch(_){}
     }
     function routeRender() {
@@ -5409,6 +5409,7 @@
     ${localBackupsPanel()}
     ${syncPanel()}
     ${publicCollectPanel()}
+    ${teamSyncPanel()}
   </div>`;
     }
     function saveBrand() {
@@ -8652,6 +8653,110 @@ function publicCollectPanel(){ const c=inboxCfg(); const link=inboxLinkParam();
       </div>
       <div id="ibDiag"></div>
       ${c.url?`<p class="hint" style="margin-top:10px"><b>Important:</b> after saving, re-open each entrance exam and regenerate its QR / share link — the new links carry your <i>write-only</i> submit endpoint so visitors’ phones know where to send applications. The admin read key is never put in any link.${c.inboxPulledAt?` Last fetched ${fmtDT(cfg().inboxPulledAt)}.`:''}</p>`:''}
+    </div></div>`;
+}
+
+/* ============================================================================
+   SIS PHASE 12 — TEAM SYNC across devices & roles.
+   • Staff (admin/coordinator/accountant/administrator) share ONE dataset:
+     each device pushes its changes and pulls others', merged per-record so
+     simultaneous edits don't overwrite each other; deletions are respected.
+   • Students pull only THEIR OWN bundle (fees, marks, attendance, calendar,
+     notifications/alerts) — authenticated by a token derived from their
+     symbol + DOB, so no student can read anyone else's data.
+   Uses the same Cloudflare worker + ADMIN_KEY already set for the inbox.
+   ============================================================================ */
+
+/* OPTIONAL: bake your worker URL here so fresh devices (incl. students on their
+   own phones) connect automatically. Otherwise staff use the URL in Settings. */
+const SERVER_URL_BAKED = "";
+
+function serverUrl(){ return (SERVER_URL_BAKED || (inboxCfg().url||'')).replace(/\/+$/,''); }
+function teamKey(){ return inboxCfg().key||''; }
+function teamOn(){ return !!(serverUrl() && cfg().teamSync); }
+
+/* small deterministic token from symbol+dob (matches what staff store per student) */
+function hashTok(sym,dob){ const s=String(sym||'').toLowerCase().trim()+'|'+String(dob||'').trim(); let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; } return ('t'+h.toString(36)); }
+
+/* ---------- record-level merge so staff edits don't clobber ---------- */
+const SYNC_ARRAYS=['events','apps','staff','programs','students','acad','marks','payments','teachers','examtypes','logs','notifs','trash','history','attend'];
+const SYNC_SINGLE=[]; // cfg/admin stay device-local (their timestamps would otherwise loop)
+function recTime(r){ return Date.parse(r&&(r.updatedAt||r.paidAt||r.gradAt||r.admittedAt||r.deletedAt||r.at||r.createdAt)||'')||0; }
+function mergeColl(local,remote){ const byId={}; const order=[];
+  const put=r=>{ if(!r||r.id==null)return; const id=r.id; if(!(id in byId)){byId[id]=r;order.push(id);} else { byId[id]=recTime(r)>=recTime(byId[id])?r:byId[id]; } };
+  (local||[]).forEach(put); (remote||[]).forEach(put); return order.map(id=>byId[id]); }
+function reconcileDeletes(data){ const trash=data.trash||[]; const delAt={};
+  trash.forEach(t=>{ if(t.kind==='rec'&&t.collection&&t.payload&&t.payload.record){ (delAt[t.collection]=delAt[t.collection]||{})[t.payload.record.id]=Date.parse(t.deletedAt||'')||Infinity; }
+    else if(t.kind==='event'&&t.payload&&t.payload.event){ (delAt.events=delAt.events||{})[t.payload.event.id]=Date.parse(t.deletedAt||'')||Infinity; }
+    else if(t.kind==='entry'&&t.payload&&t.payload.app){ (delAt.apps=delAt.apps||{})[t.payload.app.id]=Date.parse(t.deletedAt||'')||Infinity; } });
+  Object.keys(delAt).forEach(coll=>{ if(!Array.isArray(data[coll]))return; data[coll]=data[coll].filter(r=>{ const dt=delAt[coll][r.id]; return !(dt && recTime(r)<=dt); }); });
+  return data; }
+function collSig(arr){ return (arr||[]).map(r=>String(r&&r.id)+':'+recTime(r)).sort().join('|'); }
+function mergeIntoLocal(remoteData){ if(!remoteData)return false; let changed=false;
+  const merged={};
+  SYNC_ARRAYS.forEach(k=>{ merged[k]=mergeColl(DB.read(k,[]), remoteData[k]||[]); });
+  SYNC_SINGLE.forEach(k=>{ const local=DB.read(k,null); const rv=remoteData[k]; merged[k]= (rv&&(!local|| (Number(rv.__v||0)>=Number(local&&local.__v||0))))?rv:local; });
+  reconcileDeletes(merged);
+  SYNC_ARRAYS.forEach(k=>{ if(collSig(merged[k])!==collSig(DB.read(k,[]))){ DB.write(k, merged[k]); changed=true; } });
+  SYNC_SINGLE.forEach(k=>{ if(JSON.stringify(merged[k])!==JSON.stringify(DB.read(k,null))){ DB.write(k, merged[k]); changed=true; } });
+  return changed; }
+function teamSnapshot(){ const d={}; SYNC_ARRAYS.forEach(k=>d[k]=DB.read(k,[])); SYNC_SINGLE.forEach(k=>d[k]=DB.read(k,null)); return d; }
+
+/* ---------- per-student bundles (what each student is allowed to see) ---------- */
+function buildBundles(){ const students=DB.read('students',[]); const out={};
+  students.forEach(s=>{ if(!s.symbol)return; const sym=String(s.symbol).toLowerCase();
+    out[sym]={ tok:hashTok(s.symbol,s.dob), data:{
+      profile:{name:s.name,symbol:s.symbol,programId:s.programId,semester:s.semester,status:s.status},
+      payments:DB.read('payments',[]).filter(p=>p.studentId===s.id&&p.approved!==false),
+      marks:DB.read('marks',[]).filter(m=>m.studentId===s.id),
+      attend:DB.read('attend',[]).filter(a=>a.studentId===s.id),
+      notifs:DB.read('notifs',[]).filter(n=>n.studentId===s.id||(n.programId===s.programId&&!n.studentId)),
+      acad:DB.read('acad',[]).filter(a=>a.programId===s.programId&&(a.approved!==false)),
+      at:nowISO() } }; });
+  return out; }
+
+/* ---------- push / pull ---------- */
+let __teamBusy=false, __lastPushHash='';
+async function teamPush(){ if(!teamOn()||__teamBusy||typeof fetch==='undefined')return; if(!DB.read('session',null))return; // staff only
+  try{ __teamBusy=true; const snap=teamSnapshot(); const hash=JSON.stringify(snap).length+':'+(DB.read('logs',[]).length); 
+    const res=await fetch(serverUrl()+'/state?key='+encodeURIComponent(teamKey()),{method:'PUT',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({version:Date.now(),data:snap})});
+    if(res&&res.ok){ // also refresh student bundles
+      try{ await fetch(serverUrl()+'/bundles?key='+encodeURIComponent(teamKey()),{method:'PUT',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({bundles:buildBundles()})}); }catch(_){}
+      setCfg({teamPushedAt:nowISO()});
+    }
+  }catch(_){ } finally{ __teamBusy=false; } }
+async function teamPull(){ if(!teamOn()||typeof fetch==='undefined')return false; if(!DB.read('session',null))return false;
+  try{ const res=await fetch(serverUrl()+'/state?key='+encodeURIComponent(teamKey()),{headers:{'Accept':'application/json'}}); if(!res||!res.ok)return false;
+    const j=await res.json(); if(!j||!j.data)return false; const changed=mergeIntoLocal(j.data); if(changed){ setCfg({teamPulledAt:nowISO()}); render(); } return changed;
+  }catch(_){ return false; } }
+async function teamSyncNow(){ if(!teamOn()){ toast('Turn on Team sync and set the server first','warn'); return; } await teamPull(); await teamPush(); toast('Team data synced','ok'); }
+
+/* student: pull only my bundle so I get fee/mark/attendance updates + alerts */
+async function studentPullBundle(){ if(typeof fetch==='undefined')return; const ss=DB.read('sSession',null); if(!ss)return; const url=serverUrl(); if(!url)return;
+  const s=DB.read('students',[]).find(x=>x.id===ss.studentId); if(!s||!s.symbol)return;
+  try{ const res=await fetch(url+'/me?sym='+encodeURIComponent(String(s.symbol).toLowerCase())+'&tok='+encodeURIComponent(hashTok(s.symbol,s.dob)),{headers:{'Accept':'application/json'}});
+    if(!res||!res.ok)return; const j=await res.json(); const d=j&&j.data; if(!d)return; let changed=false;
+    // merge my payments/marks/attend/notifs/acad into local
+    [['payments','payments'],['marks','marks'],['attend','attend'],['notifs','notifs'],['acad','acad']].forEach(([k,kk])=>{ if(!d[kk])return; const merged=mergeColl(DB.read(k,[]), d[kk]); if(JSON.stringify(merged)!==JSON.stringify(DB.read(k,[]))){ DB.write(k,merged); changed=true; } });
+    if(changed){ setCfg({teamPulledAt:nowISO()}); render(); }
+  }catch(_){ } }
+
+/* ---------- schedulers (gentle: ~12s) ---------- */
+function teamTick(){ try{
+  if(DB.read('session',null)){ if(!teamOn())return; const last=window.__teamPullAt||0; if(Date.now()-last>12000){ window.__teamPullAt=Date.now(); teamPull(); } }
+  else if(DB.read('sSession',null)){ const last=window.__bundleAt||0; if(Date.now()-last>12000){ window.__bundleAt=Date.now(); studentPullBundle(); } }
+}catch(_){} }
+let __teamPushTimer=null;
+function teamPushSoon(){ if(!teamOn())return; if(!DB.read('session',null))return; clearTimeout(__teamPushTimer); __teamPushTimer=setTimeout(()=>{ teamPush(); }, 1500); }
+
+/* settings panel */
+function teamSyncPanel(){ const on=cfg().teamSync; const url=serverUrl();
+  return `<div class="panel" style="margin-top:16px"><div class="ph"><h2>Team sync (all roles, live)</h2>${on?'<span class="chip ok">on</span>':'<span class="chip muted">off</span>'}<div class="spacer"></div>${teamOn()?`<button class="btn primary sm" onclick="teamSyncNow()">⟳ Sync now</button>`:''}</div>
+    <div class="pb"><p class="hint" style="margin-top:0">Turns the inbox server into a shared workspace. When any staff member (admin, coordinator, accountant, administrator) approves or updates something, every other staff device receives it, merged record-by-record so people’s simultaneous edits don’t overwrite each other. Each <b>student</b> automatically pulls only their own fees, marks, attendance, calendar and <b>notifications/alerts</b> — they can’t see anyone else’s data.</p>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px"><input type="checkbox" id="teamOn" ${on?'checked':''} style="width:auto" onchange="setCfg({teamSync:this.checked});render()"> Enable team sync on this device</label>
+      <p class="hint">Uses the same <b>server URL</b> and <b>admin key</b> you set above in “Public data collection”. On every other staff member’s device, sign in, open Settings, enter the same URL + key, and tick this box. Students just sign in — their device syncs automatically once you’ve enabled it here and pushed at least once.${url?'':' <b style="color:var(--bad)">Set the server URL above first.</b>'}</p>
+      ${cfg().teamPushedAt?`<p class="hint">Last pushed ${fmtDT(cfg().teamPushedAt)}${cfg().teamPulledAt?` · last received ${fmtDT(cfg().teamPulledAt)}`:''}.</p>`:''}
+      <p class="hint" style="margin-top:6px"><b>For students on their own phones:</b> either turn this on (above) after deploying, or bake your worker URL into the <code>SERVER_URL_BAKED</code> line in the file before uploading, so fresh phones connect with no setup.</p>
     </div></div>`;
 }
 
