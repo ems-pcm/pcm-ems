@@ -4925,6 +4925,7 @@
       if (r.startsWith('/r/')) {
         const [path, qs] = r.split('?'); const parts = path.split('/'); const pi = parts.indexOf('p'); const prog = (pi >= 0) ? decodeURIComponent(parts[pi + 1] || '') : '';
         let payload = null; if (qs) { const mm = qs.match(/(?:^|&)d=([^&]+)/); if (mm) { const j = b64urlDec(decodeURIComponent(mm[1])); if (j) { try { payload = JSON.parse(j); } catch (_) { } } } }
+        if (qs) { const im = qs.match(/(?:^|&)ib=([^&]+)/); if (im) { try { const ij = JSON.parse(b64urlDec(decodeURIComponent(im[1]))); if (ij && ij.u) DB.write('inboxPublic', { url: String(ij.u).replace(/\/+$/, ''), token: ij.t || '' }); } catch (_) { } } }
         if (qs && DB.read('session', null)) { const sm = qs.match(/(?:^|&)sy=([^&]+)/); if (sm) { try { const sj = b64urlDec(decodeURIComponent(sm[1])); const sc = JSON.parse(sj); if (sc && sc.u && sc.r) { const cur = syncCfg(); if (cur.url !== sc.u || cur.room !== sc.r || !cur.auto) { DB.write('syncCfg', { url: sc.u, room: sc.r, auto: true }); window.__pulledOnce = false; } } } catch (_) { } } }
         return renderPublic(parts[2], prog, payload);
       }
@@ -8566,10 +8567,16 @@ function saveInboxCfg(){ const c={url:($('#ibUrl').value||'').trim().replace(/\/
 
 /* public devices learn ONLY the write endpoint (+optional submit token) from the QR link param `ib`. Never the admin read key. */
 function inboxFromUrl(){ try{ const qs=(location.hash.split('?')[1]||''); const mm=qs.match(/(?:^|&)ib=([^&]+)/); if(!mm)return null; const j=JSON.parse(b64urlDec(decodeURIComponent(mm[1]))); return (j&&j.u)?{url:String(j.u).replace(/\/+$/,''),token:j.t||''}:null; }catch(_){ return null; } }
-function publicInbox(){ const u=inboxFromUrl(); if(u)return u; const c=inboxCfg(); return c.url?{url:c.url,token:c.token}:null; }
+function publicInbox(){ const u=inboxFromUrl(); if(u)return u; const saved=DB.read('inboxPublic',null); if(saved&&saved.url)return saved; const c=inboxCfg(); return c.url?{url:c.url,token:c.token}:null; }
 function inboxLinkParam(){ const c=inboxCfg(); if(!c.url)return ''; return 'ib='+b64urlEnc(JSON.stringify({u:c.url,t:c.token||''})); }
 
 /* ----- public side: append one submission (write-only, fire-and-forget) ----- */
+async function sendToCollege(kind, record){ const ib=publicInbox();
+  if(!ib){ toast('Saved on this device. (No college server is linked to this form, so the office may not receive it online — please also submit in person if asked.)','warn'); return; }
+  const okk=await postPublicSubmission(kind,record);
+  if(okk) toast('✓ Sent to the college server','ok');
+  else toast('Saved on this device, but could not reach the college server right now. Please check your internet and try re-submitting, or contact the office.','warn');
+}
 async function postPublicSubmission(kind, record){ try{ const ib=publicInbox(); if(!ib||typeof fetch==='undefined')return false;
   const res=await fetch(ib.url+'/submit',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify({token:ib.token||'', kind, record, at:nowISO()})});
@@ -8603,6 +8610,28 @@ function mergePublicRecords(list){ if(!list||!list.length)return 0;
   if(n)logEvent('Imported '+n+' public submission(s) from collection server');
   return n; }
 
+/* one-click diagnostic: round-trip POST then GET, reports the exact problem */
+async function testInbox(){ const c=inboxCfg();
+  const out=(msg,good)=>{ const el=document.getElementById('ibDiag'); if(el)el.innerHTML=`<div class="card" style="margin-top:8px;border-color:${good?'var(--ok)':'var(--bad)'};background:${good?'var(--ok-bg)':'var(--bad-bg)'}">${good?'✓ ':'⚠ '}${esc(msg)}</div>`; };
+  if(!c.url){ out('Enter the inbox server URL first, then Save.',false); return; }
+  if(!c.key){ out('Enter the admin read key first, then Save.',false); return; }
+  if(typeof fetch==='undefined'){ out('No network available in this view.',false); return; }
+  out('Testing…',true);
+  // 1) submit a test record
+  let postedSeq=null;
+  try{ const r=await fetch(c.url+'/submit',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:c.token||'',kind:'application',record:{__test:true,data:{f_name:'Connection Test'},status:'submitted'},at:nowISO()})});
+    if(!r.ok){ if(r.status===403){ out('Reached the server, but the submit token was rejected (HTTP 403). Make the “Submit token” here match the SUBMIT_TOKEN secret on the worker — or clear both.',false); return; } out('Reached the server but POST /submit failed (HTTP '+r.status+'). Check the worker code is deployed and the KV binding is named exactly INBOX.',false); return; }
+    const j=await r.json().catch(()=>({})); postedSeq=j.seq;
+  }catch(e){ out('Could not reach '+c.url+'/submit at all. Likely causes: wrong URL, the worker isn’t deployed, or CORS. Open '+c.url+' in a browser — you should see a small JSON message.',false); return; }
+  // 2) read it back with the admin key
+  try{ const r=await fetch(c.url+'/list?key='+encodeURIComponent(c.key)+'&since=0',{headers:{'Accept':'application/json'}});
+    if(r.status===401){ out('POST worked, but reading was refused (HTTP 401): the “Admin read key” here doesn’t match the ADMIN_KEY secret on the worker.',false); return; }
+    if(!r.ok){ out('POST worked, but GET /list failed (HTTP '+r.status+').',false); return; }
+    const arr=await r.json(); const found=Array.isArray(arr)&&arr.some(x=>x&&x.record&&x.record.__test);
+    out('Success! The full round-trip works — the test submission was sent and read back. Public submissions will now reach this dashboard. (You can clear the test entry with “Fetch submissions now”, it is harmless.)',true);
+  }catch(e){ out('POST worked but the read request failed (network/CORS). Check the worker URL and that it returns JSON.',false); return; }
+}
+
 /* throttled auto-poll for the admin while signed in */
 function pollPublicInbox(){ try{ const c=inboxCfg(); if(!DB.read('session',null)||!c.url||!c.key)return;
   const last=window.__inboxPollAt||0; if(Date.now()-last<20000)return; window.__inboxPollAt=Date.now(); pullPublicSubmissions(true);
@@ -8619,7 +8648,9 @@ function publicCollectPanel(){ const c=inboxCfg(); const link=inboxLinkParam();
       </div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <button class="btn ghost sm" onclick="saveInboxCfg()">Save settings</button>
+        <button class="btn primary sm" onclick="testInbox()">🔌 Test connection</button>
       </div>
+      <div id="ibDiag"></div>
       ${c.url?`<p class="hint" style="margin-top:10px"><b>Important:</b> after saving, re-open each entrance exam and regenerate its QR / share link — the new links carry your <i>write-only</i> submit endpoint so visitors’ phones know where to send applications. The admin read key is never put in any link.${c.inboxPulledAt?` Last fetched ${fmtDT(cfg().inboxPulledAt)}.`:''}</p>`:''}
     </div></div>`;
 }
@@ -8819,7 +8850,7 @@ function publicCollectPanel(){ const c=inboxCfg(); const link=inboxLinkParam();
       const e = DB.read('events', []).find(x => x.id === eventId);
       const data = collectInputs($('#pubForm').closest('.public'));
       for (const f of allFieldsFor(e)) { if (f.required && !String(data[f.id] || '').trim() && f.type !== 'file') { toast('Please fill: ' + f.label, 'bad'); return; } }
-      const apps = DB.read('apps', []); const _ap = newApplicant(e, data, '', 'public'); apps.push(_ap); DB.write('apps', apps); postPublicSubmission('application', _ap);
+      const apps = DB.read('apps', []); const _ap = newApplicant(e, data, '', 'public'); apps.push(_ap); DB.write('apps', apps); sendToCollege('application', _ap);
       $('.public .wrap').innerHTML = `<div class="panel"><div class="pb" style="text-align:center;padding:40px">
     <div class="empty"><div class="big" style="background:var(--ok-bg);color:var(--ok)">✓</div>
     <h3>${e.category === 'college_event' ? 'You’re registered!' : 'Attendance recorded'}</h3>
@@ -8896,8 +8927,8 @@ function publicCollectPanel(){ const c=inboxCfg(); const link=inboxLinkParam();
       if (__applicantPhoto) data.f_photo = __applicantPhoto;
       const apps = DB.read('apps', []); const ap = newApplicant(e, data, prog, 'public'); apps.push(ap); DB.write('apps', apps);
       __applicantPhoto = ''; DB.write('pubState', { appId: ap.id }); renderEntrancePortal(e);
-      postPublicSubmission('application', ap);
       toast('Application submitted', 'ok');
+      sendToCollege('application', ap);
     }
     function validApplicant(data) {
       const nm = String(data.f_name || '').trim(); if (nm && nm.split(/\s+/).length < 2) { toast('Please enter the full name (first and last)', 'bad'); return false; }
