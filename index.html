@@ -6937,24 +6937,10 @@
 
     /* ============================ STUDENT APP (separate dashboard) ============================ */
     function currentStudent() { const s = DB.read('sSession', null); if (!s) return null; return DB.read('students', []).find(x => x.id === s.studentId) || null; }
-    function suFillPicked(id) {
-      if (!id) return;
-      const s = DB.read('students', []).find(x => x.id === id); if (!s) return;
-      if ($('#suUser')) $('#suUser').value = s.username || s.symbol || '';
-      if ($('#suPass')) $('#suPass').value = normDOB(s.password) || s.password || '';
-    }
-    function normDOB(v) {
-      v = String(v || '').trim(); if (!v) return '';
-      let m = v.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/); // YYYY-MM-DD or YYYY/MM/DD
-      if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
-      m = v.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/); // DD-MM-YYYY or MM-DD-YYYY
-      if (m) { const a = m[1].padStart(2, '0'), b = m[2].padStart(2, '0'); return m[3] + '-' + (Number(a) > 12 ? b + '-' + a : a + '-' + b); }
-      return v.toLowerCase();
-    }
     function studentLogin() {
       const u = $('#suUser').value.trim(); const p = $('#suPass').value.trim();
       const norm = v => String(v || '').trim().toLowerCase();
-      const st = DB.read('students', []).find(x => norm(x.username || x.symbol) === norm(u) && (norm(x.password) === norm(p) || normDOB(x.password) === normDOB(p)));
+      const st = DB.read('students', []).find(x => norm(x.username || x.symbol) === norm(u) && norm(x.password) === norm(p));
       if (!st) { toast('Invalid student login — check your Symbol No and Date of birth (YYYY-MM-DD)', 'bad'); return; }
       if (st.approved === false) { toast('Your account is awaiting admin approval', 'warn'); return; }
       DB.write('sSession', { studentId: st.id, at: nowISO() }); DB.write('session', null); logEvent('Student signed in', st.programId); closeAuthModal(); go('/me'); render(); toast('Welcome, ' + st.name, 'ok');
@@ -8907,15 +8893,8 @@ function teamSyncPanel(){ const on=cfg().teamSync; const url=serverUrl();
       <button class="btn primary block" onclick="doLogin()">Sign in</button>
       <p class="hint" style="text-align:center;margin-top:14px">Default super admin — <b>admin</b> / <b>admin123</b> (change it in Settings)</p>`;
       } else {
-        const students = DB.read('students', []);
-        pane.innerHTML = `${students.length ? `<div class="field"><label>Quick pick — choose your name</label>
-        <select class="input" id="suPick" onchange="suFillPicked(this.value)">
-          <option value="">— Select your name —</option>
-          ${students.map(s => `<option value="${esc(s.id)}">${esc(s.name)}${s.symbol ? ' (' + esc(s.symbol) + ')' : ''}</option>`).join('')}
-        </select>
-        <div class="hint">Selecting a name fills in your Symbol No and Date of birth below — just press Sign in.</div></div>` : ''}
-      <div class="field"><label>Username (your Symbol No)</label><input class="input" id="suUser" placeholder="e.g. CSIT-2026-0001" autofocus></div>
-      <div class="field"><label>Password (your Date of birth)</label><input class="input" id="suPass" type="text" placeholder="YYYY-MM-DD" onkeydown="if(event.key==='Enter')studentLogin()"></div>
+        pane.innerHTML = `<div class="field"><label>Username (your Symbol No)</label><input class="input" id="suUser" placeholder="e.g. CSIT-2026-0001" autofocus></div>
+      <div class="field"><label>Password (your Date of birth)</label><input class="input" id="suPass" type="date" onkeydown="if(event.key==='Enter')studentLogin()"></div>
       <button class="btn primary block" onclick="studentLogin()">Sign in</button>
       <p class="hint" style="text-align:center;margin-top:14px">Use the login your college issued when you were admitted.</p>`;
       }
