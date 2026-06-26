@@ -130,3 +130,36 @@ A few quick notes:
 Only the admin device has the ADMIN_KEY, so only you can read submissions. Visitors can only add one — they can't see or change your data.
 The Cloudflare free tier (100,000 requests/day) is far more than a college admissions cycle needs.
 If submissions don't appear: re-check that the KV binding is named exactly INBOX, that the URL in Settings has no trailing slash, and that the ADMIN_KEY in Settings matches the secret exactly.
+
+
+if came still error
+
+Step 1 — Create the KV namespace (if you haven't)
+
+In Cloudflare dashboard, left menu → Storage & Databases → KV.
+Click Create a namespace → name it campus_inbox → Add.
+
+Step 2 — Bind it to your worker as INBOX (this is the key step)
+
+Left menu → Workers & Pages → click your campus-inbox worker.
+Go to Settings → Bindings (older dashboards call it Variables → KV Namespace Bindings).
+Click Add binding → choose KV namespace.
+
+Variable name: INBOX — type it exactly, all capitals. This must match precisely.
+KV namespace: select campus_inbox.
+
+
+Save and deploy.
+
+Step 3 — Confirm the secrets are set
+While you're in Settings → Variables and Secrets, make sure these exist:
+
+Secret ADMIN_KEY = your private read key (must equal the "Admin read key" in Campus Desk Settings).
+Secret SUBMIT_TOKEN = optional anti-spam token (must equal the "Submit token" in Campus Desk, or leave both blank).
+
+Step 4 — Re-test
+
+(Optional but recommended) paste the updated campus-inbox-worker.js I just gave you into the worker editor and Deploy — it now returns a clear message instead of crashing if anything's still off.
+Back in Campus Desk → Settings → Public data collection → click 🔌 Test connection.
+
+You should now see "Success!". If instead it says "Setup incomplete: bind a KV namespace named INBOX", the binding name isn't exactly INBOX — recheck Step 2.
