@@ -6110,7 +6110,7 @@ function renderAuth(){
       <div class="navlinks">
         <a href="#what">What it does</a>
         <a href="#data">Your data</a>
-        <a href="privacy-policy" target="_blank" rel="noopener">Privacy</a>
+        <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy</a>
         <a href="terms-of-service.html" target="_blank" rel="noopener">Terms</a>
         <a href="javascript:void(0)" class="btn primary sm" style="color:#fff" onclick="openAuthModal()">Sign in</a>
       </div>
@@ -6140,7 +6140,7 @@ function renderAuth(){
       </div>
 
       <p class="homefoot">© ${new Date().getFullYear()} ${esc(brandName())}. All rights reserved. &nbsp;·&nbsp;
-        <a href="privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> &nbsp;·&nbsp;
+        <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a> &nbsp;·&nbsp;
         <a href="terms-of-service.html" target="_blank" rel="noopener">Terms of Service</a></p>
     </div>
 
@@ -6207,7 +6207,7 @@ function dataSectionContent(which){
             <li>You can log in anytime to check your own application status, attendance, and results.</li>
             <li>We never sell or share your data with third parties.</li>
           </ul>
-          <p>Full details are in our <a href="privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.</p>
+          <p>Full details are in our <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
         </div>
       </div>`;
   }
@@ -6226,7 +6226,7 @@ function dataSectionContent(which){
           <li>The administrator has full access in order to operate the system.</li>
           <li>We never sell or share data with third parties.</li>
         </ul>
-        <p>Full details are in our <a href="privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.</p>
+        <p>Full details are in our <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
       </div>
     </div>`;
 }
@@ -6286,7 +6286,7 @@ function publicShell(inner, eid){
       ${loggedIn? `<button class="pbtn" onclick="pubLogout('${eid}')">Log out</button>` : `<button class="pbtn primary" onclick="pubLogin('${eid}')">🔑 Login</button>`}
     </div>`:'';
   return `<div class="public"><div class="pbar"><div class="brandmark" style="padding:0">${brandMark('Registration')}</div>${nav}</div><div class="wrap">${inner}
-    <p class="hint" style="text-align:center;margin-top:24px">By submitting this form you agree to our <a href="terms-of-service.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.</p>
+    <p class="hint" style="text-align:center;margin-top:24px">By submitting this form you agree to our <a href="terms-of-service.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
   </div></div>`;
 }
 function pubHome(eid){ go('/r/'+eid); render(); }
