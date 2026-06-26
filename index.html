@@ -8606,8 +8606,6 @@
     <div class="homenav">
       <div class="logo">${brandLogo()}</div><b>${esc(brandName())}</b>
       <div class="navlinks">
-        <a href="#what">What it does</a>
-        <a href="#data">Your data</a>
         <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy</a>
         <a href="terms-of-service.html" target="_blank" rel="noopener">Terms</a>
         <a href="javascript:void(0)" class="btn primary sm" style="color:#fff" onclick="openAuthModal()">Sign in</a>
@@ -8620,7 +8618,6 @@
       <p>Apply for entrance from anywhere — your phone, tablet, or computer — and let the college manage admissions, attendance, results, and staff access from one dashboard.</p>
       <div class="cta">
         <a href="javascript:void(0)" onclick="openAuthModal()">Sign in to your account</a>
-        <a href="#what" class="ghost">Learn more</a>
       </div>
     </div>
 
@@ -8666,67 +8663,15 @@
     }
     function whatItDoesContent(which) {
       if (which === 'student') {
-        return `<h2>Built for your entrance &amp; student life</h2>
-      <p class="sub">Everything you need, from applying to checking your results</p>
-      <div class="featgrid">
-        <div class="fc"><div class="ico">📱</div><h3>Apply from your phone</h3><p>No app to install, no queue to stand in — scan the QR code or open the link and apply for entrance in minutes, from anywhere.</p></div>
-        <div class="fc"><div class="ico">🔔</div><h3>Track your application</h3><p>Log back in anytime with your symbol number to check your application status — submitted, under review, or admitted.</p></div>
-        <div class="fc"><div class="ico">🎫</div><h3>Get your symbol number instantly</h3><p>Once admitted, your program-specific symbol/roll number is generated automatically — no waiting in office lines.</p></div>
-        <div class="fc"><div class="ico">📊</div><h3>Check results &amp; attendance</h3><p>See your exam results and attendance record online, the moment they're published — no need to visit the notice board.</p></div>
-        <div class="fc"><div class="ico">🔐</div><h3>Your data, protected</h3><p>Only staff your college has approved can view your records, and you control your own password.</p></div>
-        <div class="fc"><div class="ico">⏱️</div><h3>Save time, skip the paperwork</h3><p>What used to take a trip to campus and a stack of forms now takes a few taps — apply, track, and stay updated, all in one place.</p></div>
-      </div>`;
+        return ``;
       }
-      return `<h2>What ${esc(brandName())} does</h2>
-    <p class="sub">Built for entrance applications and everyday college administration</p>
-    <div class="featgrid">
-      <div class="fc"><div class="ico">📝</div><h3>Apply for entrance, anywhere</h3><p>Prospective students fill out the entrance application by scanning a QR code or opening a link — no app install, works on any phone.</p></div>
-      <div class="fc"><div class="ico">✅</div><h3>Admissions &amp; symbol numbers</h3><p>Admissions staff review applications, approve admissions, and issue program-specific symbol/roll numbers automatically.</p></div>
-      <div class="fc"><div class="ico">📊</div><h3>Attendance &amp; results</h3><p>Record attendance and exam results, and let students check their own status and results securely online.</p></div>
-      <div class="fc"><div class="ico">👥</div><h3>Role-based staff access</h3><p>The administrator grants each staff member access only to the specific features they need — nothing more.</p></div>
-      <div class="fc"><div class="ico">💳</div><h3>Fees &amp; records</h3><p>Track fees and keep a complete, organized academic record for every student in one place.</p></div>
-      <div class="fc"><div class="ico">🔒</div><h3>Built-in access control</h3><p>Every action is tied to a signed-in account with permissions set by the administrator, so access stays accountable.</p></div>
-    </div>`;
+      return ``;
     }
     function dataSectionContent(which) {
       if (which === 'student') {
-        return `<h2>Your data, used transparently</h2>
-      <p class="sub">What you share when you apply, and who can see it</p>
-      <div class="datagrid">
-        <div class="dg-col">
-          <h3>📋 What we collect from you</h3>
-          <p>When you apply for entrance, we only collect what you enter yourself — your name, date of birth, contact details, a photo (if asked for), and your academic history — so the college can review your application.</p>
-          <p>Once admitted, your symbol number and date of birth become your login. <b>${esc(brandName())} never asks for your Google account, contacts, email, or any other app's data.</b></p>
-        </div>
-        <div class="dg-col">
-          <h3>👁 Who can see your records</h3>
-          <ul>
-            <li>Only staff the college has specifically given access to admissions, attendance, or results can view your information — not everyone in the office.</li>
-            <li>You can log in anytime to check your own application status, attendance, and results.</li>
-            <li>We never sell or share your data with third parties.</li>
-          </ul>
-          <p>Full details are in our <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
-        </div>
-      </div>`;
+        return ``;
       }
-      return `<h2>Your data, used transparently</h2>
-    <p class="sub">What we collect, why we collect it, and who can see it</p>
-    <div class="datagrid">
-      <div class="dg-col">
-        <h3>📋 What we collect</h3>
-        <p>When a student submits an entrance application, we collect the details they enter themselves — name, date of birth, contact information, a photo (if provided), and academic history.</p>
-        <p>Staff and admin accounts sign in with a username and password issued by the college. <b>${esc(brandName())} does not request access to your Google account, contacts, email, or any other third-party data.</b></p>
-      </div>
-      <div class="dg-col">
-        <h3>👁 Who can see it</h3>
-        <ul>
-          <li>Only the staff a college administrator has explicitly granted access to a feature can view those records.</li>
-          <li>The administrator has full access in order to operate the system.</li>
-          <li>We never sell or share data with third parties.</li>
-        </ul>
-        <p>Full details are in our <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
-      </div>
-    </div>`;
+      return ``;
     }
     function authTab(which) {
       $('#atAdmin')?.classList.toggle('active', which === 'admin'); $('#atStudent')?.classList.toggle('active', which === 'student');
