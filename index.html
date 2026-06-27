@@ -4823,7 +4823,6 @@
        ======================================================================= */
 
     /* ---------- tiny helpers ---------- */
-    const SERVER_URL_BAKED = "https://campus-inbox.dammar-mitai.workers.dev";
     const $ = (s, el = document) => el.querySelector(s);
     const $$ = (s, el = document) => [...el.querySelectorAll(s)];
     const uid = (p = 'id') => p + '_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
@@ -8671,7 +8670,7 @@ function publicCollectPanel(){ const c=inboxCfg(); const link=inboxLinkParam();
 
 /* OPTIONAL: bake your worker URL here so fresh devices (incl. students on their
    own phones) connect automatically. Otherwise staff use the URL in Settings. */
-const SERVER_URL_BAKED = "";
+const SERVER_URL_BAKED = "https://campus-inbox.dammar-mitai.workers.dev";
 
 function serverUrl(){ return (SERVER_URL_BAKED || (inboxCfg().url||'')).replace(/\/+$/,''); }
 function teamKey(){ return inboxCfg().key||''; }
