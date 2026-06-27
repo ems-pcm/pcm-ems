@@ -4823,6 +4823,7 @@
        ======================================================================= */
 
     /* ---------- tiny helpers ---------- */
+    const SERVER_URL_BAKED = "https://campus-inbox.dammar-mitai.workers.dev";
     const $ = (s, el = document) => el.querySelector(s);
     const $$ = (s, el = document) => [...el.querySelectorAll(s)];
     const uid = (p = 'id') => p + '_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
@@ -4916,7 +4917,8 @@
       try { document.title = brandName(); } catch (_) { }
       try { if (!$('#authModalBg')?.classList.contains('show')) document.body.style.overflow = ''; } catch (_) { }
       routeRender();
-      setTimeout(() => { try { paintInlineQR(); } catch (_) { } try { enhanceTables(); } catch (_) { } try { maybeAutoPull(); } catch (_) { } try { teamTick(); } catch (_) { } }, 0);
+      try { startSyncLoop(); } catch (_) { }
+  setTimeout(() => { try { paintInlineQR(); } catch (_) { } try { enhanceTables(); } catch (_) { } try { maybeAutoPull(); } catch (_) { } try { teamTick(); } catch (_) { } }, 0);
       try { if (DB.read('session', null) && isSuper()) autoBackup(); } catch (_) { } try{ pollPublicInbox(); }catch(_){}
     }
     function routeRender() {
@@ -5612,7 +5614,7 @@
       for (const f of fields) { if (f.required && !String(data[f.id] || '').trim() && f.type !== 'file') { toast('Please fill: ' + f.label, 'bad'); return; } }
       const apps = DB.read('apps', []);
       if (entryId) {
-        const a = apps.find(x => x.id === entryId); a.data = { ...a.data, ...data }; a.program = prog; a.dob = data.f_dob || a.dob; a.updatedAt = nowISO();
+        const a = apps.find(x => x.id === entryId); a.data = { ...a.data, ...data }; a.program = prog; a.dob = normDate(data.f_dob || a.dob); a.updatedAt = nowISO();
         a.logs.push({ at: nowISO(), action: 'Edited by admin' }); toast('Entry updated', 'ok');
       }
       else { apps.push(newApplicant(e, data, prog, 'admin')); toast('Entry added', 'ok'); }
@@ -5621,7 +5623,7 @@
     function newApplicant(e, data, program, by) {
       return {
         id: uid('ap'), eventId: e.id, category: e.category, program: program || '',
-        data, dob: data.f_dob || '', symbol: '',
+        data, dob: normDate(data.f_dob || ''), symbol: '',
         status: e.category === 'entrance_exam' ? 'submitted' : 'submitted',
         attendance: null, result: null,
         logs: [{ at: nowISO(), action: (by === 'admin' ? 'Added by admin' : 'Submitted via QR form') }],
@@ -6689,7 +6691,7 @@
     </div></div><div class="mf"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" onclick="saveFee('${payId}','${sid}')">Save</button></div>`);
     }
     function saveFee(payId, sid) { const pays = DB.read('payments', []); const p = pays.find(x => x.id === payId); p.amount = Number($('#efAmt').value) || 0; p.fine = Number($('#efFine').value) || 0; p.discount = Number($('#efDisc').value) || 0; const paid = $('#efPaid').value === '1'; p.paid = paid; p.paidAt = paid ? nowISO() : null; if (!isSuper()) p.approved = false; DB.write('payments', pays); logEvent('Edited fee ' + (p.title || ''), p.programId); if (!isSuper()) notify('admin', { programId: p.programId, title: 'Fee approval needed', body: 'A fee record was edited by accounting and needs approval.' }); closeModal(); openStudentDetail(sid); toast('Fee updated', 'ok'); }
-    function togglePay(payId, sid) { const pays = DB.read('payments', []); const p = pays.find(x => x.id === payId); p.paid = !p.paid; p.paidAt = p.paid ? nowISO() : null; DB.write('payments', pays); logEvent((p.paid ? 'Marked fee PAID: ' : 'Marked fee UNPAID: ') + (p.title || ''), p.programId); closeModal(); openStudentDetail(sid); }
+    function togglePay(payId, sid) { const pays = DB.read('payments', []); const p = pays.find(x => x.id === payId); p.paid = !p.paid; p.paidAt = p.paid ? nowISO() : null; p.updatedAt = nowISO(); DB.write('payments', pays); logEvent((p.paid ? 'Marked fee PAID: ' : 'Marked fee UNPAID: ') + (p.title || ''), p.programId); closeModal(); openStudentDetail(sid); }
     function addAdHocFee(sid) {
       const s = DB.read('students', []).find(x => x.id === sid);
       modal(`<div class="mh"><div><h2>Add fee</h2><p>${esc(s.name)}</p></div><button class="x" data-x>×</button></div>
@@ -6776,7 +6778,7 @@
     function acadSave(type, pid, sem, id) {
       const cfg = ATYPES[type]; const data = {};
       for (const f of cfg.fields) { let v = $('#af_' + f.k).value; if (f.type === 'number') v = v === '' ? '' : Number(v); data[f.k] = typeof v === 'string' ? v.trim() : v; if (f.req && (data[f.k] === '' || data[f.k] == null)) { toast('Fill: ' + f.l, 'bad'); return; } }
-      const acad = DB.read('acad', []);
+      const acad = DB.read('acad', []); data.updatedAt = nowISO();
       if (id) { const r = acad.find(x => x.id === id); Object.assign(r, data); }
       else { acad.push(Object.assign({ id: uid('ac'), type, programId: pid, semester: cfg.sem ? Number(sem) : null }, data)); }
       DB.write('acad', acad); logEvent((id ? 'Updated ' : 'Added ') + cfg.sing.toLowerCase(), pid); closeModal(); toast(cfg.sing + ' saved', 'ok'); render();
@@ -6940,7 +6942,7 @@
     function studentLogin() {
       const u = $('#suUser').value.trim(); const p = $('#suPass').value.trim();
       const norm = v => String(v || '').trim().toLowerCase();
-      const st = DB.read('students', []).find(x => norm(x.username || x.symbol) === norm(u) && norm(x.password) === norm(p));
+      const st = DB.read('students', []).find(x => norm(x.username || x.symbol) === norm(u) && (norm(x.password) === norm(p) || normDate(x.password) === normDate(p)));
       if (!st) { toast('Invalid student login — check your Symbol No and Date of birth (YYYY-MM-DD)', 'bad'); return; }
       if (st.approved === false) { toast('Your account is awaiting admin approval', 'warn'); return; }
       DB.write('sSession', { studentId: st.id, at: nowISO() }); DB.write('session', null); logEvent('Student signed in', st.programId); closeAuthModal(); go('/me'); render(); toast('Welcome, ' + st.name, 'ok');
@@ -7826,7 +7828,7 @@
 
     /* ---------- student approval ---------- */
     function pendingStudents() { const mine = myProgramIds(); return DB.read('students', []).filter(s => s.approved === false && (mine === null || mine.includes(s.programId))); }
-    function approveStudent(id) { if (!isSuper()) { toast('Admin only', 'bad'); return; } const students = DB.read('students', []); const s = students.find(x => x.id === id); if (!s) return; s.approved = true; (s.logs = s.logs || []).push({ at: nowISO(), action: 'Approved by admin' }); DB.write('students', students); logEvent('Approved student ' + s.name, s.programId); notify('student', { studentId: s.id, programId: s.programId, title: 'Account activated', body: 'Your login is now active. Username ' + s.symbol }); toast('Student approved', 'ok'); render(); }
+    function approveStudent(id) { if (!isSuper()) { toast('Admin only', 'bad'); return; } const students = DB.read('students', []); const s = students.find(x => x.id === id); if (!s) return; s.approved = true; s.updatedAt = nowISO(); (s.logs = s.logs || []).push({ at: nowISO(), action: 'Approved by admin' }); DB.write('students', students); logEvent('Approved student ' + s.name, s.programId); notify('student', { studentId: s.id, programId: s.programId, title: 'Account activated', body: 'Your login is now active. Username ' + s.symbol }); toast('Student approved', 'ok'); render(); }
     function rejectStudent(id) { if (!isSuper()) { toast('Admin only', 'bad'); return; } deleteStudent(id); }
 
     /* ---------- faculty table under schedules ---------- */
@@ -8001,8 +8003,8 @@
         } catch (err) { toast('Could not read file', 'bad'); }
       }; r.readAsBinaryString(f); inp.value = '';
     }
-    function approveFeesAll(pid) { if (!isSuper()) { toast('Admin only', 'bad'); return; } const pays = DB.read('payments', []); let n = 0; pays.forEach(p => { if (p.approved === false && p.programId === pid) { p.approved = true; n++; } }); DB.write('payments', pays); logEvent(`Approved ${n} fee record(s)`, pid); notify('student', { programId: pid, title: 'Fee details updated', body: 'Your fee statement has been approved and is now visible.' }); toast(`Approved ${n} record(s)`, 'ok'); render(); }
-    function approveFee(id) { if (!isSuper()) return; const pays = DB.read('payments', []); const p = pays.find(x => x.id === id); if (p) { p.approved = true; DB.write('payments', pays); toast('Approved', 'ok'); render(); } }
+    function approveFeesAll(pid) { if (!isSuper()) { toast('Admin only', 'bad'); return; } const pays = DB.read('payments', []); let n = 0; pays.forEach(p => { if (p.approved === false && p.programId === pid) { p.approved = true; p.updatedAt = nowISO(); n++; } }); DB.write('payments', pays); logEvent(`Approved ${n} fee record(s)`, pid); notify('student', { programId: pid, title: 'Fee details updated', body: 'Your fee statement has been approved and is now visible.' }); toast(`Approved ${n} record(s)`, 'ok'); render(); }
+    function approveFee(id) { if (!isSuper()) return; const pays = DB.read('payments', []); const p = pays.find(x => x.id === id); if (p) { p.approved = true; p.updatedAt = nowISO(); DB.write('payments', pays); toast('Approved', 'ok'); render(); } }
 
     /* ---------- attendance & alerts (administrator) ---------- */
     function monthKey(d) { d = d || new Date().toISOString().slice(0, 10); return String(d).slice(0, 7); }
@@ -8751,13 +8753,58 @@ function teamPushSoon(){ if(!teamOn())return; if(!DB.read('session',null))return
 
 /* settings panel */
 function teamSyncPanel(){ const on=cfg().teamSync; const url=serverUrl();
-  return `<div class="panel" style="margin-top:16px"><div class="ph"><h2>Team sync (all roles, live)</h2>${on?'<span class="chip ok">on</span>':'<span class="chip muted">off</span>'}<div class="spacer"></div>${teamOn()?`<button class="btn primary sm" onclick="teamSyncNow()">⟳ Sync now</button>`:''}</div>
+  return `<div class="panel" style="margin-top:16px"><div class="ph"><h2>Team sync (all roles, live)</h2>${on?'<span class="chip ok">on</span>':'<span class="chip muted">off</span>'}<div class="spacer"></div>${teamOn()?`<button class="btn primary sm" onclick="teamSyncNow()">⟳ Sync now</button>`:''}<button class="btn ghost sm" onclick="testTeamSync()">🔌 Test team sync</button></div>
     <div class="pb"><p class="hint" style="margin-top:0">Turns the inbox server into a shared workspace. When any staff member (admin, coordinator, accountant, administrator) approves or updates something, every other staff device receives it, merged record-by-record so people’s simultaneous edits don’t overwrite each other. Each <b>student</b> automatically pulls only their own fees, marks, attendance, calendar and <b>notifications/alerts</b> — they can’t see anyone else’s data.</p>
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px"><input type="checkbox" id="teamOn" ${on?'checked':''} style="width:auto" onchange="setCfg({teamSync:this.checked});render()"> Enable team sync on this device</label>
       <p class="hint">Uses the same <b>server URL</b> and <b>admin key</b> you set above in “Public data collection”. On every other staff member’s device, sign in, open Settings, enter the same URL + key, and tick this box. Students just sign in — their device syncs automatically once you’ve enabled it here and pushed at least once.${url?'':' <b style="color:var(--bad)">Set the server URL above first.</b>'}</p>
-      ${cfg().teamPushedAt?`<p class="hint">Last pushed ${fmtDT(cfg().teamPushedAt)}${cfg().teamPulledAt?` · last received ${fmtDT(cfg().teamPulledAt)}`:''}.</p>`:''}
+      <div id="tsDiag"></div>${cfg().teamPushedAt?`<p class="hint">Last pushed ${fmtDT(cfg().teamPushedAt)}${cfg().teamPulledAt?` · last received ${fmtDT(cfg().teamPulledAt)}`:''}.</p>`:''}
       <p class="hint" style="margin-top:6px"><b>For students on their own phones:</b> either turn this on (above) after deploying, or bake your worker URL into the <code>SERVER_URL_BAKED</code> line in the file before uploading, so fresh phones connect with no setup.</p>
     </div></div>`;
+}
+
+/* ============================================================================
+   SIS PHASE 13 — fixes: consistent DOB format for form & login, CONTINUOUS
+   background sync (so updates arrive without navigating), record timestamps
+   so newest edit wins, and a one-click Team-sync test.
+   ============================================================================ */
+
+/* ---- DOB: one canonical format (YYYY-MM-DD) everywhere ---- */
+function normDate(v){ v=String(v==null?'':v).trim(); if(!v)return '';
+  let m=v.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/); if(m)return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');     // YYYY-MM-DD / YYYY/MM/DD
+  m=v.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/); if(m)return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');         // DD-MM-YYYY (assume day first)
+  const d=new Date(v); if(!isNaN(d.getTime())) return d.toISOString().slice(0,10);
+  return v.toLowerCase(); }
+
+/* ---- record timestamp helper so "newest wins" works in team sync ---- */
+function touch(rec){ if(rec&&typeof rec==='object') rec.updatedAt=nowISO(); return rec; }
+
+/* ---- continuous background sync (independent of navigation) ---- */
+let __syncLoop=null;
+function startSyncLoop(){ if(__syncLoop)return; __syncLoop=setInterval(()=>{
+  try{ if(DB.read('session',null)){ try{pollPublicInbox();}catch(_){}
+        if(typeof teamOn==='function'&&teamOn()){ const last=window.__teamPullAt2||0; if(Date.now()-last>8000){ window.__teamPullAt2=Date.now(); try{teamPull();}catch(_){} } } }
+       else if(DB.read('sSession',null)){ const last=window.__bundleAt2||0; if(Date.now()-last>8000){ window.__bundleAt2=Date.now(); try{studentPullBundle();}catch(_){} } }
+  }catch(_){}
+}, 8000); }
+
+/* ---- one-click team-sync test (round trip PUT then GET /state) ---- */
+async function testTeamSync(){ const out=(m,good)=>{ const el=document.getElementById('tsDiag'); if(el)el.innerHTML=`<div class="card" style="margin-top:8px;border-color:${good?'var(--ok)':'var(--bad)'};background:${good?'var(--ok-bg)':'var(--bad-bg)'}">${good?'✓ ':'⚠ '}${esc(m)}</div>`; };
+  const url=serverUrl(), key=teamKey();
+  if(!url){ out('Set the server URL (in “Public data collection” above) first.',false); return; }
+  if(!key){ out('Enter the admin key (in “Public data collection” above) first.',false); return; }
+  if(typeof fetch==='undefined'){ out('No network in this view.',false); return; }
+  out('Testing…',true);
+  try{ const probe={version:Date.now(),data:{__probe:true}};
+    const p=await fetch(url+'/state?key='+encodeURIComponent(key),{method:'PUT',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(probe)});
+    if(p.status===401){ out('Server reached, but the admin key is wrong (401). It must equal the ADMIN_KEY secret on the worker.',false); return; }
+    if(!p.ok){ out('PUT /state failed (HTTP '+p.status+'). Re-deploy the latest worker — it must include the /state route, and the KV binding must be named INBOX.',false); return; }
+    const g=await fetch(url+'/state?key='+encodeURIComponent(key),{headers:{'Accept':'application/json'}});
+    if(!g.ok){ out('GET /state failed (HTTP '+g.status+').',false); return; }
+    const j=await g.json(); if(j&&j.data&&j.data.__probe){ out('Success! Team sync is connected. Now push your real data: click “Sync now”. Other staff: enter the same URL + key and enable team sync. Students sync automatically.',true);
+      // immediately push real data so others get it
+      try{ await teamPush(); }catch(_){}
+    } else out('Connected, but the test value did not read back — the worker may be an old version without /state. Re-deploy the latest worker.',false);
+  }catch(e){ out('Could not reach '+url+'/state. Re-deploy the latest worker (it needs the /state route) and check the URL.',false); }
 }
 
     /* ============================ DELETE → TRASH → PURGE ============================ */
@@ -8894,7 +8941,7 @@ function teamSyncPanel(){ const on=cfg().teamSync; const url=serverUrl();
       <p class="hint" style="text-align:center;margin-top:14px">Default super admin — <b>admin</b> / <b>admin123</b> (change it in Settings)</p>`;
       } else {
         pane.innerHTML = `<div class="field"><label>Username (your Symbol No)</label><input class="input" id="suUser" placeholder="e.g. CSIT-2026-0001" autofocus></div>
-      <div class="field"><label>Password (your Date of birth)</label><div class="pwrap"><input class="input" id="suPass" type="password" placeholder="YYYY-MM-DD" onkeydown="if(event.key==='Enter')studentLogin()"><button type="button" class="pwtoggle" onclick="togglePass('suPass',this)" aria-label="Show password">👁</button></div></div>
+      <div class="field"><label>Date of birth (your password)</label><input class="input" id="suPass" type="date" onkeydown="if(event.key==='Enter')studentLogin()"><div class="hint">Use the date picker — the same date you entered on the application form.</div></div>
       <button class="btn primary block" onclick="studentLogin()">Sign in</button>
       <p class="hint" style="text-align:center;margin-top:14px">Use the login your college issued when you were admitted.</p>`;
       }
@@ -9042,7 +9089,7 @@ function teamSyncPanel(){ const on=cfg().teamSync; const url=serverUrl();
     function portalLogin(eid) {
       const e = DB.read('events', []).find(x => x.id === eid);
       const dob = $('#liDob').value, sym = $('#liSym').value.trim();
-      const a = DB.read('apps', []).find(x => x.eventId === eid && (x.dob || '') === dob && (x.symbol || '').toLowerCase() === sym.toLowerCase() && x.symbol);
+      const a = DB.read('apps', []).find(x => x.eventId === eid && normDate(x.dob || '') === normDate(dob) && (x.symbol || '').toLowerCase() === sym.toLowerCase() && x.symbol);
       if (!a) { toast('No match. Check your DOB and Symbol No.', 'bad'); return; }
       DB.write('pubState', { appId: a.id }); renderEntrancePortal(e); toast('Logged in', 'ok');
     }
