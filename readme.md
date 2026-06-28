@@ -163,3 +163,7 @@ Step 4 — Re-test
 Back in Campus Desk → Settings → Public data collection → click 🔌 Test connection.
 
 You should now see "Success!". If instead it says "Setup incomplete: bind a KV namespace named INBOX", the binding name isn't exactly INBOX — recheck Step 2.
+
+
+
+npx create-cloudflare@latest my-xems-sync --existing-script my-xems-sync

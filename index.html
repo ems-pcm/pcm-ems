@@ -8622,7 +8622,7 @@ async function testInbox(){ const c=inboxCfg();
   // 1) submit a test record
   let postedSeq=null;
   try{ const r=await fetch(c.url+'/submit',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:c.token||'',kind:'application',record:{__test:true,data:{f_name:'Connection Test'},status:'submitted'},at:nowISO()})});
-    if(!r.ok){ if(r.status===403){ out('Reached the server, but the submit token was rejected (HTTP 403). Make the “Submit token” here match the SUBMIT_TOKEN secret on the worker — or clear both.',false); return; } out('Reached the server but POST /submit failed (HTTP '+r.status+'). Check the worker code is deployed and the KV binding is named exactly INBOX.',false); return; }
+    if(!r.ok){ if(r.status===403){ out('Reached the server, but the submit token was rejected (HTTP 403). Make the “Submit token” here match the SUBMIT_TOKEN secret on the worker — or clear both.',false); return; } out(r.status===404?('The server is up but has no /submit route (HTTP 404) — the latest worker code is not actually deployed. Re-deploy the worker (use “Deploy”, not just “Save”) with the full campus-inbox-worker.js, then test again.'):('POST /submit failed (HTTP '+r.status+'). If 500, bind a KV namespace named exactly INBOX.'),false); return; }
     const j=await r.json().catch(()=>({})); postedSeq=j.seq;
   }catch(e){ out('Could not reach '+c.url+'/submit at all. Likely causes: wrong URL, the worker isn’t deployed, or CORS. Open '+c.url+' in a browser — you should see a small JSON message.',false); return; }
   // 2) read it back with the admin key
@@ -8670,7 +8670,7 @@ function publicCollectPanel(){ const c=inboxCfg(); const link=inboxLinkParam();
 
 /* OPTIONAL: bake your worker URL here so fresh devices (incl. students on their
    own phones) connect automatically. Otherwise staff use the URL in Settings. */
-const SERVER_URL_BAKED = "https://campus-inbox.dammar-mitai.workers.dev";
+const SERVER_URL_BAKED = "";
 
 function serverUrl(){ return (SERVER_URL_BAKED || (inboxCfg().url||'')).replace(/\/+$/,''); }
 function teamKey(){ return inboxCfg().key||''; }
