@@ -9015,8 +9015,8 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
       <button class="btn primary block" onclick="doLogin()">Sign in</button>
       <p class="hint" style="text-align:center;margin-top:14px">Default super admin — <b>admin</b> / <b>admin123</b> (change it in Settings)</p>`;
       } else {
-        pane.innerHTML = `<div class="field"><label>Username (your Symbol No)</label><input class="input" id="suUser" placeholder="e.g. CSIT-2026-0001" autofocus></div>
-      <div class="field"><label>Date of birth (your password)</label><input class="input" id="suPass" type="date" onkeydown="if(event.key==='Enter')studentLogin()"><div class="hint">Use the date picker — the same date you entered on the application form.</div></div>
+        pane.innerHTML = `<div class="field"><label>Username</label><input class="input" id="suUser" placeholder="e.g. CSIT-2026-0001" autofocus></div>
+      <div class="field"><label>Password</label><div class="pwrap"><input class="input" id="suPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')studentLogin()"><button type="button" class="pwtoggle" onclick="togglePass('suPass',this)" aria-label="Show password">👁</button></div><div class="hint">Enter the username and password your college gave you (date of birth, by default).</div></div>
       <button class="btn primary block" onclick="studentLogin()">Sign in</button>
       <p class="hint" style="text-align:center;margin-top:14px">Use the login your college issued when you were admitted.</p>`;
       }
