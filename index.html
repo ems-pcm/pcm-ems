@@ -8806,6 +8806,65 @@ async function testTeamSync(){ const out=(m,good)=>{ const el=document.getElemen
   }catch(e){ out('Could not reach '+url+'/state. Re-deploy the latest worker (it needs the /state route) and check the URL.',false); }
 }
 
+/* ============================================================================
+   SIS PHASE 14 — ONE simple sync setup. Everything (public applications,
+   staff team sync, student updates) uses a SINGLE server URL + admin key.
+   The three older sync panels are replaced by one panel.
+   ============================================================================ */
+
+/* ===== STEP 1: paste your server URL here ONCE, then re-upload index.html =====
+   Example: const SERVER_URL = "https://my-college.deno.dev";
+   Leave it as "" only if you'll type the URL in Settings on the admin device. */
+const SERVER_URL = "";
+
+/* one source of truth for the URL */
+function serverUrl(){ const baked = (typeof SERVER_URL!=='undefined' && SERVER_URL) || (typeof SERVER_URL_BAKED!=='undefined' && SERVER_URL_BAKED) || ''; return (baked || (inboxCfg().url||'')).replace(/\/+$/,''); }
+function teamKey(){ return inboxCfg().key||''; }
+function teamOn(){ return !!(serverUrl() && cfg().teamSync); }
+
+/* public visitors auto-use the same server (no QR param / no per-device setup needed) */
+function publicInbox(){ const u=serverUrl(); if(u) return {url:u, token:(inboxCfg().token||'')}; return inboxFromUrl() || DB.read('inboxPublic',null) || null; }
+
+/* hide the old separate panels — one panel replaces them all */
+function syncPanel(){ return ''; }
+function teamSyncPanel(){ return ''; }
+function publicCollectPanel(){ return oneSyncPanel(); }
+
+function oneSyncPanel(){ const url=serverUrl(); const c=inboxCfg(); const baked=(typeof SERVER_URL!=='undefined'&&SERVER_URL)||(typeof SERVER_URL_BAKED!=='undefined'&&SERVER_URL_BAKED)||'';
+  const connected = !!(url && c.key && cfg().teamSync);
+  return `<div class="panel" style="margin-top:16px"><div class="ph"><h2>Online sync (one setup)</h2>${connected?'<span class="chip ok">connected</span>':'<span class="chip muted">not set up</span>'}</div>
+    <div class="pb">
+      <p class="hint" style="margin-top:0">One server makes every device share data: public applications arrive here, staff changes reach all staff, and each student sees their own updates &amp; alerts. Set it up once.</p>
+      <div class="field"><label>1 · Server URL</label><input class="input" id="oneUrl" value="${esc(url)}" placeholder="https://your-server.deno.dev" ${baked?'readonly':''}>${baked?'<div class="hint">Set in the file (used by all devices, including students).</div>':'<div class="hint">Tip: to connect students’ phones automatically, paste this same URL into the <code>SERVER_URL</code> line at the top of index.html and re-upload.</div>'}</div>
+      <div class="field"><label>2 · Admin key (the secret you set on the server)</label><input class="input" id="oneKey" value="${esc(c.key)}" placeholder="your ADMIN_KEY"></div>
+      <button class="btn primary" onclick="connectSync()">Connect &amp; turn on sync</button>
+      <div id="oneDiag"></div>
+      <p class="hint" style="margin-top:12px"><b>Other staff:</b> open Settings here, type the same Admin key, press Connect. <b>Students:</b> nothing to do — they sync automatically.${cfg().teamPushedAt?` · Last synced ${fmtDT(cfg().teamPushedAt)}.`:''}</p>
+    </div></div>`;
+}
+
+async function connectSync(){ const out=(m,good)=>{ const el=document.getElementById('oneDiag'); if(el)el.innerHTML=`<div class="card" style="margin-top:10px;border-color:${good?'var(--ok)':'var(--bad)'};background:${good?'var(--ok-bg)':'var(--bad-bg)'}">${good?'✓ ':'⚠ '}${esc(m)}</div>`; };
+  const urlIn=(document.getElementById('oneUrl')?document.getElementById('oneUrl').value:'').trim().replace(/\/+$/,'');
+  const url=urlIn||serverUrl(); const key=(document.getElementById('oneKey')?document.getElementById('oneKey').value:'').trim();
+  if(!url){ out('Enter the server URL (the https://… address your server shows).',false); return; }
+  if(!key){ out('Enter the admin key you set on the server.',false); return; }
+  DB.write('inboxCfg',{url, key, token:(inboxCfg().token||'')}); setCfg({teamSync:true});
+  if(typeof fetch==='undefined'){ out('Saved. (No network here to test.)',true); return; }
+  out('Connecting…',true);
+  try{
+    const p=await fetch(url+'/state?key='+encodeURIComponent(key),{method:'PUT',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({version:Date.now(),data:{__probe:true}})});
+    if(p.status===401){ out('Reached the server, but the admin key is wrong. Make it match the ADMIN_KEY you set on the server.',false); return; }
+    if(p.status===404){ out('The server is reachable but missing the /state route — the server code isn’t fully deployed. Re-paste the server file and deploy.',false); return; }
+    if(!p.ok){ out('Server responded with an error (HTTP '+p.status+'). Make sure the whole server file was deployed.',false); return; }
+    const g=await fetch(url+'/state?key='+encodeURIComponent(key),{headers:{'Accept':'application/json'}});
+    const j=await g.json().catch(()=>null);
+    if(!(j&&j.data&&j.data.__probe)){ out('Connected, but the test value didn’t read back. Re-deploy the latest server file (it needs the /state route).',false); return; }
+    try{ await teamPush(); }catch(_){}
+    out('Connected! Sync is on. Staff changes now reach everyone and students get their updates automatically. Other staff: enter the same key and press Connect.',true);
+    toast('Connected — online sync is on','ok');
+  }catch(e){ out('Could not reach '+url+'. Open that address in a browser — it should show {"ok":true,...}. If it doesn’t load, the server isn’t deployed yet.',false); }
+}
+
     /* ============================ DELETE → TRASH → PURGE ============================ */
     function askDeleteEvent(id) {
       const e = DB.read('events', []).find(x => x.id === id);
