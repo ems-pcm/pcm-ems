@@ -5673,7 +5673,7 @@
     function newApplicant(e, data, program, by) {
       return {
         id: uid('ap'), eventId: e.id, category: e.category, program: program || '',
-        data, dob: normDate(data.f_dob || ''), symbol: (e.category === 'entrance_exam' && (program || (data && data.f_program))) ? genEntranceSymbol(e, program || data.f_program) : '',
+        data, dob: normDate(data.f_dob || ''), symbol: (by !== 'public' && e.category === 'entrance_exam' && (program || (data && data.f_program))) ? genEntranceSymbol(e, program || data.f_program) : '',
         status: e.category === 'entrance_exam' ? 'submitted' : 'submitted',
         attendance: null, result: null,
         logs: [{ at: nowISO(), action: (by === 'admin' ? 'Added by admin' : 'Submitted via QR form') }],
@@ -8654,7 +8654,7 @@ async function pullPublicSubmissions(silent){ const c=inboxCfg();
     const res=await fetch(c.url+'/list?key='+encodeURIComponent(c.key)+'&since='+encodeURIComponent(since),{headers:{'Accept':'application/json'}});
     if(!res.ok){ if(!silent)toast(res.status===401?'Wrong admin key':'Collection server error','bad'); return; }
     const j=await res.json(); const list=Array.isArray(j)?j:(j.items||j.records||[]);
-    const n=mergePublicRecords(list);
+    const n=mergePublicRecords(list); if(n){ try{ reconcileEntranceSymbols(); }catch(_){} }
     if(list.length){ const maxSeq=Math.max(since,...list.map(x=>Number(x.seq||x.id||0)).filter(v=>!isNaN(v))); if(isFinite(maxSeq))setCfg({inboxSince:maxSeq, inboxPulledAt:nowISO()}); }
     if(!silent)toast(n?`Imported ${n} new public submission(s)`:'No new submissions','ok'); if(n)render();
   }catch(_){ if(!silent)toast('Could not reach the collection server — check the URL','bad'); } }
@@ -8712,6 +8712,8 @@ function publicCollectPanel(){ const c=inboxCfg(); const link=inboxLinkParam();
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <button class="btn ghost sm" onclick="saveInboxCfg()">Save settings</button>
         <button class="btn primary sm" onclick="testInbox()">🔌 Test connection</button>
+        <button class="btn ghost sm" onclick="showWorkerCode()">📋 Server (Worker) code</button>
+        <button class="btn ghost sm" onclick="fixSymbolsNow()">🧮 Fix symbol numbers</button>
       </div>
       <div id="ibDiag"></div>
       ${c.url?`<p class="hint" style="margin-top:10px"><b>Important:</b> after saving, re-open each entrance exam and regenerate its QR / share link — the new links carry your <i>write-only</i> submit endpoint so visitors’ phones know where to send applications. The admin read key is never put in any link.${c.inboxPulledAt?` Last fetched ${fmtDT(cfg().inboxPulledAt)}.`:''}</p>`:''}
@@ -8790,7 +8792,7 @@ async function teamPush(){ if(!teamOn()||__teamBusy||typeof fetch==='undefined')
   }catch(_){ } finally{ __teamBusy=false; } }
 async function teamPull(){ if(!teamOn()||typeof fetch==='undefined')return false; if(!DB.read('session',null))return false;
   try{ const res=await fetch(serverUrl()+'/state?key='+encodeURIComponent(teamKey()),{headers:{'Accept':'application/json'}}); if(!res||!res.ok)return false;
-    const j=await res.json(); if(!j||!j.data)return false; const changed=mergeIntoLocal(j.data); if(changed){ setCfg({teamPulledAt:nowISO()}); render(); } return changed;
+    const j=await res.json(); if(!j||!j.data)return false; const changed=mergeIntoLocal(j.data); let fixed=0; try{ fixed=(reconcileEntranceSymbols()||0)+(dedupStudentSymbols()||0); }catch(_){ } if(changed||fixed){ setCfg({teamPulledAt:nowISO()}); if(fixed){ try{teamPushSoon();}catch(_){ } } render(); } return changed||!!fixed;
   }catch(_){ return false; } }
 async function teamSyncNow(){ if(!teamOn()){ toast('Turn on Team sync and set the server first','warn'); return; } await teamPull(); await teamPush(); toast('Team data synced','ok'); }
 
@@ -8814,7 +8816,7 @@ function teamPushSoon(){ if(!teamOn())return; if(!DB.read('session',null))return
 
 /* settings panel */
 function teamSyncPanel(){ const on=cfg().teamSync; const url=serverUrl();
-  return `<div class="panel" style="margin-top:16px"><div class="ph"><h2>Team sync (all roles, live)</h2>${on?'<span class="chip ok">on</span>':'<span class="chip muted">off</span>'}<div class="spacer"></div>${teamOn()?`<button class="btn primary sm" onclick="teamSyncNow()">⟳ Sync now</button>`:''}<button class="btn ghost sm" onclick="testTeamSync()">🔌 Test team sync</button></div>
+  return `<div class="panel" style="margin-top:16px"><div class="ph"><h2>Team sync (all roles, live)</h2>${on?'<span class="chip ok">on</span>':'<span class="chip muted">off</span>'}<div class="spacer"></div>${teamOn()?`<button class="btn primary sm" onclick="teamSyncNow()">⟳ Sync now</button>`:''}<button class="btn ghost sm" onclick="testTeamSync()">🔌 Test team sync</button><button class="btn ghost sm" onclick="showWorkerCode()">📋 Server code</button></div>
     <div class="pb"><p class="hint" style="margin-top:0">Turns the inbox server into a shared workspace. When any staff member (admin, coordinator, accountant, administrator) approves or updates something, every other staff device receives it, merged record-by-record so people’s simultaneous edits don’t overwrite each other. Each <b>student</b> automatically pulls only their own fees, marks, attendance, calendar and <b>notifications/alerts</b> — they can’t see anyone else’s data.</p>
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px"><input type="checkbox" id="teamOn" ${on?'checked':''} style="width:auto" onchange="setCfg({teamSync:this.checked});render()"> Enable team sync on this device</label>
       <p class="hint">Uses the same <b>server URL</b> and <b>admin key</b> you set above in “Public data collection”. On every other staff member’s device, sign in, open Settings, enter the same URL + key, and tick this box. Students just sign in — their device syncs automatically once you’ve enabled it here and pushed at least once.${url?'':' <b style="color:var(--bad)">Set the server URL above first.</b>'}</p>
@@ -8916,7 +8918,7 @@ async function checkSubmissions(){ const show=(m,good)=>{ const el=document.getE
     if(res.status===401){ show('Admin key is wrong (401).',false); return; }
     if(!res.ok){ show('Server error (HTTP '+res.status+').',false); return; }
     const j=await res.json(); const list=Array.isArray(j)?j:(j.items||[]);
-    const n=mergePublicRecords(list);
+    const n=mergePublicRecords(list); if(n){ try{ reconcileEntranceSymbols(); }catch(_){} }
     if(list.length){ const mx=Math.max(since,...list.map(x=>Number(x.seq||x.id||0)).filter(v=>!isNaN(v))); if(isFinite(mx))setCfg({inboxSince:mx}); }
     if(n){ show('Received '+n+' new submission(s)! They now appear under Entrance / Results.',true); toast('Received '+n+' submission(s)','ok'); }
     else { show('No new submissions on the server yet. If an applicant just submitted: make sure they used a QR/link created AFTER you connected (or set the SERVER_URL line in the file). Their phone must know the server address.',false); }
@@ -11686,6 +11688,90 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
     </tbody></table></div></div></div>`;
     }
 
+    /* ============================================================================
+       FEATURE SET 8 — fix "no updates" (ship the matching Worker) + fix duplicate /
+       unordered symbols from concurrent multi-device submits (server defers symbol
+       to the admin device, plus a dedupe/reorder reconciliation pass).
+       ============================================================================ */
+
+    function getWorkerCode() { const el = document.getElementById('campusWorkerSrc'); return el ? el.textContent : ''; }
+    function copyWorkerCode() {
+      const code = getWorkerCode();
+      try { navigator.clipboard.writeText(code).then(() => toast('Worker code copied — paste it into your Cloudflare worker and Deploy', 'ok'), () => fallbackCopy(code)); }
+      catch (_) { fallbackCopy(code); }
+    }
+    function fallbackCopy(code) { try { const ta = document.createElement('textarea'); ta.value = code; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Worker code copied', 'ok'); } catch (e) { toast('Select the code and copy manually', 'warn'); } }
+    function downloadWorkerCode() {
+      try { const blob = new Blob([getWorkerCode()], { type: 'text/javascript' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'campus-inbox-worker.js'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); toast('Downloaded campus-inbox-worker.js', 'ok'); }
+      catch (e) { toast('Could not download — use Copy instead', 'warn'); }
+    }
+    function showWorkerCode() {
+      const code = getWorkerCode();
+      modal(`<div class="mh"><div><h2>Server (Cloudflare Worker) code</h2><p>Deploy this so sync &amp; cross-device login work</p></div><button class="x" data-x>×</button></div>
+    <div class="mb">
+      <div class="card" style="background:var(--brand-tint-2,#eef2fb)"><b>If updates aren't reaching anyone, the worker almost certainly doesn't have the sync routes.</b> Deploy this exact file:
+        <ol style="margin:8px 0 0;padding-left:18px;line-height:1.8">
+          <li>Cloudflare → Workers &amp; Pages → <b>campus-inbox</b> → <b>Edit code</b>.</li>
+          <li>Select all, delete, then <b>paste</b> this file. Click <b>Deploy</b> (not just Save).</li>
+          <li>Settings → Variables → <b>KV Namespace Bindings</b>: add one named exactly <code>INBOX</code>, then <b>Deploy again</b>.</li>
+          <li>(Optional) add secrets <code>ADMIN_KEY</code> and <code>SUBMIT_TOKEN</code> to match what you type in the app.</li>
+          <li>On every staff device: Settings → Team sync → set URL + Admin key, turn it <b>ON</b>.</li>
+        </ol>
+      </div>
+      <div style="display:flex;gap:8px;margin:10px 0"><button class="btn primary sm" onclick="copyWorkerCode()">📋 Copy code</button><button class="btn ghost sm" onclick="downloadWorkerCode()">⬇ Download .js</button></div>
+      <pre style="max-height:300px;overflow:auto;background:#0b1020;color:#cfe;padding:12px;border-radius:8px;font-size:11px;white-space:pre;line-height:1.5">${esc(code)}</pre>
+    </div>
+    <div class="mf"><button class="btn primary" data-x>Done</button></div>`, { lg: true });
+    }
+
+    /* ---- fix duplicate / unordered symbols (admin device is the authority) ---- */
+    function reconcileEntranceSymbols() {
+      if (!DB.read('session', null)) return 0;            // only a signed-in staff device renumbers
+      const apps = DB.read('apps', []); const events = DB.read('events', []); let fixed = 0;
+      const byEvent = {}; apps.forEach(a => { if (a && a.eventId) (byEvent[a.eventId] = byEvent[a.eventId] || []).push(a); });
+      Object.keys(byEvent).forEach(eid => {
+        const ev = events.find(e => e.id === eid); if (!ev || ev.category !== 'entrance_exam') return;
+        const list = byEvent[eid].slice().sort((x, y) => String(x.createdAt || '').localeCompare(String(y.createdAt || '')) || String(x.id).localeCompare(String(y.id)));
+        const Y3 = String((new Date(ev.date || Date.now()).getFullYear()) || new Date().getFullYear()).slice(-3);
+        const fmtNum = n => `${collegeCode()}-ENT-${Y3}-${String(n).padStart(4, '0')}`;
+        const used = new Set(); let next = 0;
+        list.forEach(a => { const n = symSeqNum(a.symbol); if (/-ENT-/i.test(a.symbol || '') && n > 0) next = Math.max(next, n); });
+        list.forEach(a => {
+          const isEnt = /-ENT-/i.test(a.symbol || ''); const n = symSeqNum(a.symbol);
+          if (isEnt && n > 0 && !used.has(n)) { used.add(n); return; }     // first claimant keeps it
+          do { next++; } while (used.has(next));                            // blank or duplicate → next free
+          used.add(next); a.symbol = fmtNum(next); a.updatedAt = nowISO(); fixed++;
+        });
+      });
+      if (fixed) { DB.write('apps', apps); logEvent('Reconciled ' + fixed + ' entrance symbol(s)'); }
+      return fixed;
+    }
+    function dedupStudentSymbols() {
+      if (!DB.read('session', null)) return 0;
+      const studs = DB.read('students', []); let fixed = 0; const byProg = {};
+      studs.forEach(s => { (byProg[s.programId] = byProg[s.programId] || []).push(s); });
+      Object.keys(byProg).forEach(pid => {
+        const p = progById(pid); if (!p) return;
+        const list = byProg[pid].slice().sort((x, y) => String(x.admittedAt || x.createdAt || '').localeCompare(String(y.admittedAt || y.createdAt || '')) || String(x.id).localeCompare(String(y.id)));
+        const used = new Set(); let next = 0;
+        list.forEach(s => { const n = symSeqNum(s.symbol); if (s.symbol && n > 0) next = Math.max(next, n); });
+        list.forEach(s => {
+          const n = symSeqNum(s.symbol);
+          if (s.symbol && n > 0 && !used.has(n)) { used.add(n); return; }
+          do { next++; } while (used.has(next));
+          used.add(next); const old = s.symbol; s.symbol = formatSymbol(p, next); if (!s.username || s.username === old) s.username = s.symbol; s.updatedAt = nowISO(); fixed++;
+        });
+      });
+      if (fixed) { DB.write('students', studs); logEvent('Reconciled ' + fixed + ' student symbol(s)'); }
+      return fixed;
+    }
+    function fixSymbolsNow() {
+      if (!DB.read('session', null)) { toast('Sign in as staff to fix symbols', 'warn'); return; }
+      const a = reconcileEntranceSymbols(); const b = dedupStudentSymbols();
+      if (a || b) { try { teamPushSoon(); } catch (_) { } toast(`Fixed ${a} entrance + ${b} student symbol(s)`, 'ok'); render(); }
+      else toast('No duplicate or out-of-order symbols found', 'ok');
+    }
+
     function emptyState(title, body, cta, onclick) {
       return `<div class="empty"><div class="big">✦</div><h3>${esc(title)}</h3>${body ? `<p>${body}</p>` : ''}
     ${cta && onclick ? `<button class="btn primary" style="margin-top:8px" onclick="${onclick}">${esc(cta)}</button>` : ''}</div>`;
@@ -11696,6 +11782,112 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
     window.__editId = null;
     render();
   </script>
+<script type="text/plain" id="campusWorkerSrc">/* ============================================================================
+   campus-inbox-worker.js  —  Cloudflare Worker backend for MY-XEMS
+   ----------------------------------------------------------------------------
+   DEPLOY (once):
+   1. Cloudflare dashboard → Workers & Pages → your "campus-inbox" worker → Edit code.
+   2. DELETE everything in the editor and PASTE this whole file.
+   3. Click DEPLOY (not just Save).
+   4. Settings → Variables → KV Namespace Bindings → add a binding:
+         Variable name:  INBOX     (exactly)
+         KV namespace:   create/choose one (e.g. campus_inbox_kv)
+   5. (Optional) Settings → Variables → add secrets:
+         ADMIN_KEY     = the same "Admin key" you type in the app
+         SUBMIT_TOKEN  = a public submit token (or leave unset to allow open submit)
+   6. Re-DEPLOY after adding the KV binding.
+   In the app (every STAFF device): Settings → Team sync → URL = this worker's URL,
+   Admin key = ADMIN_KEY, turn Team sync ON. Students just log in (Symbol + DOB).
+   ============================================================================ */
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type,Accept',
+  'Access-Control-Max-Age': '86400'
+};
+const json = (obj, status) => new Response(JSON.stringify(obj), { status: status || 200, headers: Object.assign({ 'Content-Type': 'application/json' }, CORS) });
+const text = (s, status) => new Response(s, { status: status || 200, headers: Object.assign({ 'Content-Type': 'application/json' }, CORS) });
+
+export default {
+  async fetch(request, env) {
+    if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/\/+$/, '') || '/';
+    const KV = env.INBOX;
+    if (!KV) return json({ error: 'KV namespace INBOX is not bound. Add a KV binding named INBOX, then re-deploy.' }, 500);
+    try {
+      if (path === '/') return json({ ok: true, service: 'campus-inbox', routes: ['/submit', '/list', '/state', '/bundles', '/me', '/seq'] });
+
+      /* ---- full team dataset (staff only; key = the admin key / room) ---- */
+      if (path === '/state') {
+        const key = url.searchParams.get('key') || 'default';
+        if (request.method === 'PUT') { const body = await request.text(); await KV.put('state:' + key, body); return json({ ok: true }); }
+        if (request.method === 'GET') { const v = await KV.get('state:' + key); return v ? text(v) : json({ version: 0, data: null }); }
+      }
+
+      /* ---- per-student bundles (indexed by symbol for /me) ---- */
+      if (path === '/bundles' && request.method === 'PUT') {
+        const key = url.searchParams.get('key') || 'default';
+        const body = await request.json(); const bundles = body.bundles || {};
+        await KV.put('bundles:' + key, JSON.stringify(bundles));
+        await Promise.all(Object.keys(bundles).map(sym => KV.put('me:' + String(sym).toLowerCase(), JSON.stringify(bundles[sym]))));
+        return json({ ok: true, count: Object.keys(bundles).length });
+      }
+
+      /* ---- student self-service: my bundle by symbol + token ---- */
+      if (path === '/me' && request.method === 'GET') {
+        const sym = (url.searchParams.get('sym') || '').toLowerCase();
+        const tok = url.searchParams.get('tok') || '';
+        if (!sym) return json({ error: 'sym required' }, 400);
+        const raw = await KV.get('me:' + sym);
+        if (!raw) return json({ error: 'not found' }, 404);
+        const b = JSON.parse(raw);
+        if (b.tok && tok && b.tok !== tok) return json({ error: 'bad token' }, 403);
+        return json({ data: b.data });
+      }
+
+      /* ---- ordered sequence (best-effort) for server-allocated symbols ---- */
+      if (path === '/seq' && request.method === 'POST') {
+        const key = url.searchParams.get('key') || 'default';
+        const ev = url.searchParams.get('event') || 'ent';
+        const k = 'seq:' + key + ':' + ev;
+        const cur = Number(await KV.get(k) || '0') + 1;
+        await KV.put(k, String(cur));
+        return json({ seq: cur });
+      }
+
+      /* ---- public submissions: append-only (write-only for the public) ---- */
+      if (path === '/submit' && request.method === 'POST') {
+        const body = await request.json();
+        if (env.SUBMIT_TOKEN && (body.token || '') !== env.SUBMIT_TOKEN) return json({ error: 'forbidden' }, 403);
+        const seq = Number(await KV.get('inbox:seq') || '0') + 1;
+        await KV.put('inbox:seq', String(seq));
+        const item = { id: seq, seq: seq, kind: body.kind || 'application', record: body.record || {}, at: body.at || new Date().toISOString() };
+        await KV.put('inbox:item:' + String(seq).padStart(10, '0'), JSON.stringify(item));
+        return json({ ok: true, seq: seq });
+      }
+
+      /* ---- admin: read submissions since a sequence (needs ADMIN_KEY if set) ---- */
+      if (path === '/list' && request.method === 'GET') {
+        if (env.ADMIN_KEY && (url.searchParams.get('key') || '') !== env.ADMIN_KEY) return json({ error: 'unauthorized' }, 401);
+        const since = Number(url.searchParams.get('since') || '0');
+        const out = []; let cursor;
+        do {
+          const page = await KV.list({ prefix: 'inbox:item:', cursor: cursor });
+          for (const k of page.keys) { const v = await KV.get(k.name); if (v) { const it = JSON.parse(v); if (Number(it.seq) > since) out.push(it); } }
+          cursor = page.list_complete ? null : page.cursor;
+        } while (cursor);
+        out.sort((a, b) => a.seq - b.seq);
+        return json(out);
+      }
+
+      return json({ error: 'no route', path: path }, 404);
+    } catch (e) {
+      return json({ error: String((e && e.message) || e) }, 500);
+    }
+  }
+};
+</script>
 </body>
 
 </html>
