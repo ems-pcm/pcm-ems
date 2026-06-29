@@ -8729,7 +8729,7 @@ function publicCollectPanel(){ const c=inboxCfg(); const link=inboxLinkParam();
 
 /* OPTIONAL: bake your worker URL here so fresh devices (incl. students on their
    own phones) connect automatically. Otherwise staff use the URL in Settings. */
-const SERVER_URL_BAKED = "";
+const SERVER_URL_BAKED = "https://brief-stork-9484.ems-pcm.deno.net";
 
 function serverUrl(){ return (SERVER_URL_BAKED || (inboxCfg().url||'')).replace(/\/+$/,''); }
 function teamKey(){ return inboxCfg().key||''; }
