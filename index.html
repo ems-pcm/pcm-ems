@@ -4965,6 +4965,7 @@
         case 'alumni': return (isSuper() || can('alumni')) ? shell('alumni', viewAlumni()) : shell('alumni', restricted());
         case 'practical': return (isSuper() || can('practical')) ? shell('practical', viewPractical()) : shell('practical', restricted());
         case 'remarks': return (isSuper() || can('remarks')) ? shell('remarks', viewRemarks()) : shell('remarks', restricted());
+        case 'assignteachers': return (isSuper() || can('teachers')) ? shell('assignteachers', viewAssignTeachers()) : shell('assignteachers', restricted());
         case 'notices': return (isSuper() || can('notices')) ? shell('notices', viewNotices()) : shell('notices', restricted());
         case 'academics': return shell('academics', viewAcademics());
         case 'fees': return (isSuper() || can('fees')) ? shell('fees', viewFees()) : shell('fees', restricted());
@@ -5033,6 +5034,7 @@
           ${(can('reports')) ? nav('reports', I.award, 'Reports', 'reports') : ''}
           ${(isSuper() || can('practical')) ? nav('practical', I.award, 'Practical Marks', 'practical') : ''}
           ${(isSuper() || can('remarks')) ? nav('remarks', I.doc, 'Teacher Remarks', 'remarks') : ''}
+          ${(isSuper() || can('teachers')) ? nav('assignteachers', I.users, 'Assign Teachers', 'assignteachers') : ''}
         `)}
         ${(isSuper() || can('backresults') || can('scholarships') || can('gatepass')) ? navGroup('records','Examinations & Records',`
           ${(isSuper() || can('backresults')) ? nav('backresults', I.doc, 'Back / Board Results', 'backresults') : ''}
@@ -5077,7 +5079,7 @@
   </div>`;
       $('#scrim')?.addEventListener('click', () => { $('#side').classList.remove('open'); $('#scrim').classList.remove('open'); });
     }
-    function pageTitle(a) { return { dashboard: 'Dashboard', events: 'Events', entrance: 'Entrance Exams', papers: 'Question Papers', attendance: 'Entrance Attendance', results: 'Results', admission: 'Admission', programs: 'Programs', students: 'Students', graduates: 'Passed-out', academics: 'Academics', fees: 'Fees', attend: 'Attendance', exams: 'Exams', examtypes: 'Exam Categories', reports: 'Reports', logs: 'Activity Log', users: 'Users', staff: 'Staff & Access', trash: 'Trash (Trace)', backresults: 'Back / Board Results', scholarships: 'University Scholarships', gatepass: 'Gate Pass Management', placements: 'Placements', alumni: 'Alumni Network', practical: 'Practical Marks', remarks: 'Teacher Remarks', notices: 'Notices', manual: 'User Manual', settings: 'Settings' }[a] || 'Campus Desk'; }
+    function pageTitle(a) { return { dashboard: 'Dashboard', events: 'Events', entrance: 'Entrance Exams', papers: 'Question Papers', attendance: 'Entrance Attendance', results: 'Results', admission: 'Admission', programs: 'Programs', students: 'Students', graduates: 'Passed-out', academics: 'Academics', fees: 'Fees', attend: 'Attendance', exams: 'Exams', examtypes: 'Exam Categories', reports: 'Reports', logs: 'Activity Log', users: 'Users', staff: 'Staff & Access', trash: 'Trash (Trace)', backresults: 'Back / Board Results', scholarships: 'University Scholarships', gatepass: 'Gate Pass Management', placements: 'Placements', alumni: 'Alumni Network', practical: 'Practical Marks', remarks: 'Teacher Remarks', assignteachers: 'Assign Teachers', notices: 'Notices', manual: 'User Manual', settings: 'Settings' }[a] || 'Campus Desk'; }
     function logout() { logEvent('Signed out'); DB.write('session', null); go('/'); render(); }
 
     /* ============================ DASHBOARD ============================ */
@@ -5758,7 +5760,7 @@
           <dt>Date of Birth</dt><dd>${esc(a.dob || '—')}</dd>
           <dt>Exam date</dt><dd>${fmtDate(e.date)}</dd>
           <dt>Venue</dt><dd>${esc(e.location || 'To be announced')}</dd></dl>
-        <div class="seal">${a.data.f_photo ? `<img src="${a.data.f_photo}" alt="photo" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--line);margin-bottom:8px">` : ''}<div id="admitQR"></div><div class="hint" style="text-align:center">Scan to verify</div></div>
+        <div class="seal">${a.data.f_photo ? `<img src="${a.data.f_photo}" alt="photo" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--line);margin-bottom:8px">` : `<div style="width:96px;height:96px;border-radius:10px;border:1px solid var(--line);margin-bottom:8px;display:grid;place-items:center;background:var(--brand-tint,#eef2fb);color:var(--brand,#2b6);font-weight:800;font-size:30px">${esc(String(a.data.f_name||'?').trim().charAt(0).toUpperCase())}</div>`}<div id="admitQR"></div><div class="hint" style="text-align:center">Scan to verify</div></div>
       </div>
     </div></div>
     <div class="mf no-print"><button class="btn ghost" data-x>Close</button><button class="btn ghost" onclick="printCard('bw')">🖨 B&amp;W</button><button class="btn primary" onclick="printCard('color')">🖨 Print / Save PDF</button></div>`, { lg: true });
@@ -6500,8 +6502,8 @@
       },
       calendar: {
         label: 'Academic Calendar', sing: 'Calendar entry', perm: 'calendar', icon: '📅', sem: false,
-        fields: [{ k: 'title', l: 'Title', req: 1 }, { k: 'date', l: 'Date', type: 'date', req: 1 }, { k: 'kind', l: 'Type', type: 'select', options: 'Holiday,Exam,Registration,Class,Event,Deadline' }],
-        cols: ['date', 'title', 'kind'], xl: ['Date', 'Title', 'Type']
+        fields: [{ k: 'title', l: 'Title', req: 1 }, { k: 'date', l: 'Date', type: 'date', req: 1 }, { k: 'kind', l: 'Type', type: 'select', options: 'Holiday,Exam,Registration,Class,Event,Deadline' }, { k: 'description', l: 'Description', type: 'textarea' }],
+        cols: ['date', 'title', 'kind', 'description'], xl: ['Date', 'Title', 'Type', 'Description']
       },
     };
 
@@ -6706,7 +6708,7 @@
       const s = DB.read('students', []).find(x => x.id === id); const pays = DB.read('payments', []).filter(p => p.studentId === id); const due = studentDue(id);
       modal(`<div class="mh"><div><h2>${esc(s.name)}${s.status === 'graduated' ? ' <span class="chip muted">Passed out</span>' : ''}</h2><p>${esc(s.symbol || '')} · ${esc(progName(s.programId))} · Sem ${s.semester}</p></div><button class="x" data-x>×</button></div>
     <div class="mb">
-      <div class="card"><b>Login</b><div class="hint">Username <b>${esc(s.username || s.symbol)}</b> · Password <b>${esc(s.password || '')}</b>${s.pwChanged ? ' · <span class="chip muted">custom</span>' : ' · <span class="chip muted">initial</span>'}${s.approved === false ? ' · <span class="chip bad">Pending approval</span>' : ''}</div>${(isSuper() || can('students')) ? `<button class="btn sm ghost" style="margin-top:8px" onclick="adminResetPw('${id}')">🔑 Reset password</button>` : ''}</div>
+      <div class="card"><b>Login</b><div class="hint">Username <b>${esc(s.username || s.symbol)}</b> · Password <b>${esc(s.password || '')}</b>${s.pwChanged ? ' · <span class="chip muted">custom</span>' : ' · <span class="chip muted">initial</span>'}${s.approved === false ? ' · <span class="chip bad">Pending approval</span>' : ''}</div>${(isSuper() || can('students')) ? `<button class="btn sm ghost" style="margin-top:8px" onclick="adminResetPw('${id}')">🔑 Reset password</button>` : ''}${(isSuper() || can('students')) ? `<button class="btn sm ghost" style="margin-top:8px;margin-left:6px" onclick="setUniSymbol('${id}')">🎓 University symbol</button>` : ''}${s.universitySymbol ? `<div class="hint" style="margin-top:6px">University symbol: <b>${esc(s.universitySymbol)}</b></div>` : ''}</div>
       ${can('students') ? `<div class="card" style="margin-top:10px"><div style="display:flex;align-items:center;gap:8px"><b>Semester</b> <span class="chip brand">Sem ${s.semester}</span><span class="spacer"></span>
         <button class="btn sm ghost" onclick="changeStudentSem('${id}',-1)">▼ Down</button>
         <button class="btn sm ghost" onclick="changeStudentSem('${id}',1)">▲ Up</button></div>
@@ -7111,7 +7113,7 @@
     function showDayStudent(date, pid, cur) {
       const list = calVisibleStudent(pid, cur).filter(e => String(e.date) === String(date));
       modal(`<div class="mh"><div><h2>${esc(date)}</h2><p>${list.length} entr${list.length === 1 ? 'y' : 'ies'}</p></div><button class="x" data-x>×</button></div>
-    <div class="mb">${list.length ? list.map(e => `<div class="card" style="margin-bottom:8px${e.important ? ';border-color:#e0a106;background:#fff8e6' : ''}"><b>${e.important ? '⭐ ' : ''}${esc(e.title)}</b> <span class="chip muted">${esc(e.kind || 'Event')}</span>${e.programId ? `<div class="sub">${esc(progName(e.programId))}</div>` : '<div class="sub">All programs</div>'}</div>`).join('') : '<p class="hint">No events.</p>'}</div>
+    <div class="mb">${list.length ? list.map(e => `<div class="card" style="margin-bottom:8px${e.important ? ';border-color:#e0a106;background:#fff8e6' : ''}"><b>${e.important ? '⭐ ' : ''}${esc(e.title)}</b> <span class="chip muted">${esc(e.kind || 'Event')}</span>${e.programId ? `<div class="sub">${esc(progName(e.programId))}</div>` : '<div class="sub">All programs</div>'}${e.description ? `<div class="sub" style="margin-top:4px">${esc(e.description)}</div>` : ''}</div>`).join('') : '<p class="hint">No events.</p>'}</div>
     <div class="mf"><button class="btn primary" data-x>Close</button></div>`, { lg: true });
     }
     function statCard(label, val, icon) { return `<div class="card stat"><div class="k"><span class="ic">${icon}</span>${label}</div><div class="v">${val}</div></div>`; }
@@ -7919,7 +7921,7 @@
       const rows = acadList('exam', pid, sem); const rounds = cfg().examShifts || ['Morning', 'Day', 'Evening'];
       const dates = [...new Set(rows.map(r => r.date).filter(Boolean))].sort();
       if (!rows.length) return '';
-      return `<div class="tablewrap"><table class="tbl"><thead><tr><th>Date</th>${rounds.map(s => `<th>${esc(s)}</th>`).join('')}</tr></thead><tbody>
+      return `<div class="sub" style="margin-bottom:6px">${esc(progName(pid))} · Semester ${sem} · Exam schedule</div><div class="tablewrap"><table class="tbl"><thead><tr><th>Date</th>${rounds.map(s => `<th>${esc(s)}</th>`).join('')}</tr></thead><tbody>
     ${dates.map(d => `<tr><td><b>${esc(d)}</b></td>${rounds.map(s => { const e = rows.find(r => r.date === d && ((r.round || r.shift || rounds[0]) === s)); return `<td>${e ? `<b>${esc(e.course || '')}</b>${e.time ? `<div class="sub">${esc(e.time)}</div>` : ''}${e.head ? `<div class="sub">Head: ${esc(e.head)}</div>` : ''}${e.invigilator ? `<div class="sub">Inv: ${esc(e.invigilator)}</div>` : ''}` : '<span class="sub">—</span>'}</td>`; }).join('')}</tr>`).join('')}
   </tbody></table></div>`;
     }
@@ -8729,7 +8731,7 @@ function publicCollectPanel(){ const c=inboxCfg(); const link=inboxLinkParam();
 
 /* OPTIONAL: bake your worker URL here so fresh devices (incl. students on their
    own phones) connect automatically. Otherwise staff use the URL in Settings. */
-const SERVER_URL_BAKED = "https://brief-stork-9484.ems-pcm.deno.net";
+const SERVER_URL_BAKED = "";
 
 function serverUrl(){ return (SERVER_URL_BAKED || (inboxCfg().url||'')).replace(/\/+$/,''); }
 function teamKey(){ return inboxCfg().key||''; }
@@ -8739,7 +8741,7 @@ function teamOn(){ return !!(serverUrl() && cfg().teamSync); }
 function hashTok(sym,dob){ const s=String(sym||'').toLowerCase().trim()+'|'+String(dob||'').trim(); let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; } return ('t'+h.toString(36)); }
 
 /* ---------- record-level merge so staff edits don't clobber ---------- */
-const SYNC_ARRAYS=['events','apps','staff','programs','students','acad','marks','payments','teachers','examtypes','logs','notifs','trash','history','attend'];
+const SYNC_ARRAYS=['events','apps','staff','programs','students','acad','marks','payments','teachers','examtypes','logs','notifs','trash','history','attend','practical','remarks','gatepass','backresults','placements','alumni'];
 const SYNC_SINGLE=[]; // cfg/admin stay device-local (their timestamps would otherwise loop)
 function recTime(r){ return Date.parse(r&&(r.updatedAt||r.paidAt||r.gradAt||r.admittedAt||r.deletedAt||r.at||r.createdAt)||'')||0; }
 function mergeColl(local,remote){ const byId={}; const order=[];
@@ -8766,12 +8768,13 @@ function teamSnapshot(){ const d={}; SYNC_ARRAYS.forEach(k=>d[k]=DB.read(k,[]));
 function buildBundles(){ const students=DB.read('students',[]); const out={};
   students.forEach(s=>{ if(!s.symbol)return; const sym=String(s.symbol).toLowerCase();
     out[sym]={ tok:hashTok(s.symbol,s.dob), data:{
-      profile:{name:s.name,symbol:s.symbol,programId:s.programId,semester:s.semester,status:s.status},
+      profile:{id:s.id,name:s.name,symbol:s.symbol,programId:s.programId,semester:s.semester,status:s.status,dob:s.dob,universitySymbol:s.universitySymbol||'',entranceSymbol:s.entranceSymbol||''},
       payments:DB.read('payments',[]).filter(p=>p.studentId===s.id&&p.approved!==false),
       marks:DB.read('marks',[]).filter(m=>m.studentId===s.id),
       attend:DB.read('attend',[]).filter(a=>a.studentId===s.id),
       notifs:DB.read('notifs',[]).filter(n=>n.studentId===s.id||(n.programId===s.programId&&!n.studentId)),
       acad:DB.read('acad',[]).filter(a=>a.programId===s.programId&&(a.approved!==false)),
+      practical:DB.read('practical',[]).filter(pr=>pr.studentId===s.id&&pr.approved===true),
       at:nowISO() } }; });
   return out; }
 
@@ -8797,7 +8800,7 @@ async function studentPullBundle(){ if(typeof fetch==='undefined')return; const 
   try{ const res=await fetch(url+'/me?sym='+encodeURIComponent(String(s.symbol).toLowerCase())+'&tok='+encodeURIComponent(hashTok(s.symbol,s.dob)),{headers:{'Accept':'application/json'}});
     if(!res||!res.ok)return; const j=await res.json(); const d=j&&j.data; if(!d)return; let changed=false;
     // merge my payments/marks/attend/notifs/acad into local
-    [['payments','payments'],['marks','marks'],['attend','attend'],['notifs','notifs'],['acad','acad']].forEach(([k,kk])=>{ if(!d[kk])return; const merged=mergeColl(DB.read(k,[]), d[kk]); if(JSON.stringify(merged)!==JSON.stringify(DB.read(k,[]))){ DB.write(k,merged); changed=true; } });
+    [['payments','payments'],['marks','marks'],['attend','attend'],['notifs','notifs'],['acad','acad'],['practical','practical']].forEach(([k,kk])=>{ if(!d[kk])return; const merged=mergeColl(DB.read(k,[]), d[kk]); if(JSON.stringify(merged)!==JSON.stringify(DB.read(k,[]))){ DB.write(k,merged); changed=true; } });
     if(changed){ setCfg({teamPulledAt:nowISO()}); render(); }
   }catch(_){ } }
 
@@ -9354,6 +9357,7 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
       <input class="input sm" style="width:150px" placeholder="Search…" oninput="filterRows(this,'#backTbl')">
       ${_selProg('backresults', pid)} ${_selSem('backresults', pid, sem, true)}
       <button class="btn ghost sm" onclick="go('/backresults?p=${pid}&s=${sem}&back=${onlyBack ? '0' : '1'}')">${onlyBack ? 'Show all' : 'Back only'}</button>
+      <input class="input sm" id="bkSearch" style="width:150px" placeholder="Find by symbol / name…"><button class="btn ghost sm" onclick="backPDF('${pid}','${sem}')">⬇ PDF</button>
       <button class="btn ghost sm" onclick="backTemplate('${pid}','${sem}')">⬇ Template</button>
       <button class="btn ghost sm" onclick="exportBack('${pid}','${sem}',false)">⬇ Excel</button>
       <button class="btn ghost sm" onclick="exportBack('${pid}','',false)">⬇ All 8 sem</button>
@@ -9490,6 +9494,7 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
       <input class="input sm" style="width:150px" placeholder="Search…" oninput="filterRows(this,'#schTbl')">
       ${_selProg('scholarships', pid)} ${_selSem('scholarships', pid, sem, true)}
       <button class="btn ghost sm" onclick="go('/scholarships?p=${pid}&s=${sem}&only=${only ? '0' : '1'}')">${only ? 'Show all' : 'Holders only'}</button>
+      <button class="btn primary sm" onclick="openScholarshipPicker('${pid}')">+ Award scholarship</button>
       <button class="btn ghost sm" onclick="exportScholarships('${pid}')">⬇ Excel</button>
       ${edit ? `<label class="btn ghost sm" style="margin:0">⬆ Import<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importScholarships('${pid}',this)"></label>` : ''}
     </div>
@@ -10317,6 +10322,7 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
       <input class="input sm" style="width:150px" placeholder="Search…" oninput="filterRows(this,'#backTbl')">
       ${_selProg('backresults', pid)} ${_selSem('backresults', pid, sem, true)}
       <button class="btn ghost sm" onclick="go('/backresults?p=${pid}&s=${sem}&back=${onlyBack ? '0' : '1'}')">${onlyBack ? 'Show all' : 'Back only'}</button>
+      <input class="input sm" id="bkSearch" style="width:150px" placeholder="Find by symbol / name…"><button class="btn ghost sm" onclick="backPDF('${pid}','${sem}')">⬇ PDF</button>
       <button class="btn ghost sm" onclick="backTemplate('${pid}','${sem}')">⬇ Template</button>
       <button class="btn ghost sm" onclick="exportBack('${pid}','${sem}',false)">⬇ Excel</button>
       <button class="btn ghost sm" onclick="exportBack('${pid}','',false)">⬇ All 8 sem</button>
@@ -10360,6 +10366,7 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
       <input class="input sm" style="width:150px" placeholder="Search…" oninput="filterRows(this,'#schTbl')">
       ${_selProg('scholarships', pid)} ${_selSem('scholarships', pid, sem, true)}
       <button class="btn ghost sm" onclick="go('/scholarships?p=${pid}&s=${sem}&only=${only ? '0' : '1'}')">${only ? 'Show all' : 'Holders only'}</button>
+      <button class="btn primary sm" onclick="openScholarshipPicker('${pid}')">+ Award scholarship</button>
       <button class="btn ghost sm" onclick="exportScholarships('${pid}')">⬇ Excel</button>
       ${edit ? `<label class="btn ghost sm" style="margin:0">⬆ Import<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importScholarships('${pid}',this)"></label>
       <button class="btn ghost sm" onclick="bulkRemoveScholarship()">🗑 Remove selected</button>` : ''}
@@ -10815,13 +10822,14 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
         <div class="field"><label>Date <span class="req">*</span></label><input class="input" id="tcDate" type="date" value="${todayStr()}"></div>
         <div class="field"><label>Type</label><select class="input" id="tcKind"><option>Test</option><option>Exam</option><option>Assignment</option></select></div>
       </div>
+      <div class="field"><label>Description</label><textarea class="input" id="tcDesc" rows="2" placeholder="Optional details students will see"></textarea></div>
     </div><div class="mf"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" onclick="saveTeacherCal('${aid}')">Add</button></div>`);
     }
     function saveTeacherCal(aid) {
       const me = currentStaff(); const a = teacherAssignments(me).find(x => x.id === aid); if (!a) return;
       const title = $('#tcTitle').value.trim(); const date = $('#tcDate').value; if (!title || !date) { toast('Title and date required', 'bad'); return; }
       const acad = DB.read('acad', []);
-      acad.push({ id: uid('ac'), type: 'calendar', programId: a.programId, semester: null, sem: Number(a.semester), title, date, kind: $('#tcKind').value, important: true, approved: true, createdRole: 'teacher', course: a.course, at: nowISO() });
+      acad.push({ id: uid('ac'), type: 'calendar', programId: a.programId, semester: null, sem: Number(a.semester), title, date, kind: $('#tcKind').value, description: ($('#tcDesc') ? $('#tcDesc').value.trim() : ''), important: true, approved: true, createdRole: 'teacher', course: a.course, at: nowISO() });
       DB.write('acad', acad); logEvent('Teacher added calendar ' + $('#tcKind').value + ' · ' + a.course, a.programId);
       notify('student', { programId: a.programId, semester: Number(a.semester), title: 'New ' + $('#tcKind').value + ' date', body: title + ' on ' + date + ' (' + a.course + ').' });
       closeModal(); toast('Added to calendar & students notified', 'ok'); render();
@@ -11433,7 +11441,7 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
 
       const su = (DB.read('staff', []).find(x => x.role === 'super_admin')) || { id: 'su', username: 'admin', password: 'admin123', name: 'Super Admin', role: 'super_admin', programs: [], perms: {} };
       DB.write('staff', [su,
-        { id: 'co_bba', name: 'Bina Coordinator', username: 'coord', password: 'coord123', role: 'coordinator', programs: ['pg_bbaf'], perms: { students: true, marks: true, reports: true, practical: true, remarks: true, notices: true, attendance: true, calendar: true, schedule: true, exams: true, courses: true, fees: true } },
+        { id: 'co_bba', name: 'Bina Coordinator', username: 'coord', password: 'coord123', role: 'coordinator', programs: ['pg_bbaf'], perms: { students: true, marks: true, reports: true, practical: true, remarks: true, notices: true, attendance: true, calendar: true, schedule: true, exams: true, courses: true, fees: true, teachers: true } },
         { id: 'acc', name: 'Ram Accountant', username: 'account', password: 'account123', role: 'accounting', programs: ['pg_bbaf', 'pg_csit'], perms: { fees: true } },
         { id: 'tch_demo', name: 'Mr. Sharma', username: 'teacher', password: 'teacher123', role: 'teacher', programs: ['pg_bbaf', 'pg_csit'], perms: {}, assignments: [
           { id: uid('asg'), programId: 'pg_bbaf', semester: 1, course: 'Principles of Management' },
@@ -11481,6 +11489,202 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
         }
       } catch (_) { }
     })();
+
+    /* ============================================================================
+       FEATURE SET 6 — forgiving student login (symbol / entrance / university /
+       username / email + DOB), university symbol after admission, add-scholarship
+       picker, teacher full month calendar, board-results PDF by program/sem/
+       course/university symbol.
+       ============================================================================ */
+
+    /* ---- student login: match ANY identifier + password OR date-of-birth ---- */
+    function studentLogin() {
+      const u = ($('#suUser') ? $('#suUser').value : '').trim();
+      const p = ($('#suPass') ? $('#suPass').value : '').trim();
+      const norm = v => String(v || '').trim().toLowerCase();
+      const ndp = normDate(p);
+      const idsOf = s => [s.username, s.symbol, s.entranceSymbol, s.universitySymbol, s.email].filter(Boolean).map(norm);
+      const dobOK = s => (s.dob && normDate(s.dob) === ndp) || (s.password && normDate(s.password) === ndp);
+      const st = DB.read('students', []).find(s => {
+        if (!idsOf(s).includes(norm(u))) return false;
+        if (norm(s.password) === norm(p)) return true;   // exact password (incl. changed ones)
+        return dobOK(s);                                  // date-of-birth fallback (recovery)
+      });
+      if (!st) { toast('Invalid login. Use your Symbol No (or university / entrance symbol) and your Date of Birth as YYYY-MM-DD.', 'bad'); return; }
+      if (st.approved === false) { toast('Your account is awaiting admin approval', 'warn'); return; }
+      DB.write('sSession', { studentId: st.id, at: nowISO() }); DB.write('session', null);
+      logEvent('Student signed in', st.programId); try { closeAuthModal(); } catch (_) { } go('/me'); render(); toast('Welcome, ' + st.name, 'ok');
+    }
+
+    /* ---- university symbol (registration no) — set after admission ---- */
+    function setUniSymbol(id) {
+      const s = DB.read('students', []).find(x => x.id === id); if (!s) return;
+      modal(`<div class="mh"><div><h2>University symbol</h2><p>${esc(s.name)} · ${esc(s.symbol || '')}</p></div><button class="x" data-x>×</button></div>
+    <div class="mb"><div class="field"><label>University registration / symbol number</label><input class="input" id="usSym" value="${esc(s.universitySymbol || '')}" placeholder="e.g. PU-2026-BBAF-0001"></div>
+      <p class="hint">Assigned by the university after admission. The student can also sign in using this number (with their Date of Birth).</p></div>
+    <div class="mf"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" onclick="saveUniSymbol('${id}')">Save</button></div>`);
+    }
+    function saveUniSymbol(id) {
+      const v = $('#usSym').value.trim(); const students = DB.read('students', []); const s = students.find(x => x.id === id);
+      if (v && students.some(x => x.id !== id && (x.universitySymbol || '').toLowerCase() === v.toLowerCase())) { toast('That university symbol is already used', 'bad'); return; }
+      s.universitySymbol = v; (s.logs = s.logs || []).push({ at: nowISO(), action: 'University symbol set: ' + (v || '—') });
+      DB.write('students', students); logEvent('Set university symbol for ' + s.name + ': ' + v, s.programId); closeModal(); toast('University symbol saved', 'ok'); render();
+    }
+
+    /* ---- add scholarship: pick a student then award ---- */
+    function openScholarshipPicker(pid) {
+      const progs = scopedPrograms(); pid = pid || qparam('p') || (progs[0] && progs[0].id) || '';
+      const studs = DB.read('students', []).filter(s => s.programId === pid && s.status !== 'graduated');
+      modal(`<div class="mh"><div><h2>Add scholarship</h2><p>${esc(progName(pid))} — pick a student to award</p></div><button class="x" data-x>×</button></div>
+    <div class="mb">
+      <select class="input" style="margin-bottom:10px" onchange="closeModal();openScholarshipPicker(this.value)">${progs.map(p => `<option value="${p.id}" ${p.id === pid ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+      <input class="input" placeholder="Search student…" style="margin-bottom:8px" oninput="filterRows(this,'#schPick')">
+      <div class="tablewrap" style="max-height:360px;overflow:auto"><table class="tbl" id="schPick"><thead><tr><th>Student</th><th>Sem</th><th>Status</th><th></th></tr></thead><tbody>
+        ${studs.length ? studs.map(s => `<tr><td>${esc(s.name)} <span class="sub">${esc(s.symbol || '')}</span></td><td>S${s.semester || 1}</td><td>${s.scholarship ? '<span class="chip ok">★ ' + esc(s.scholarship.type || 'Scholarship') + '</span>' : '<span class="sub">—</span>'}</td><td><button class="btn sm primary" onclick="closeModal();openScholarshipModal('${s.id}')">${s.scholarship ? 'Edit' : 'Award'}</button></td></tr>`).join('') : '<tr><td colspan="4" class="sub">No students in this program.</td></tr>'}
+      </tbody></table></div>
+    </div><div class="mf"><button class="btn ghost" data-x>Close</button></div>`, { lg: true });
+    }
+
+    /* ---- teacher: full month academic calendar (like admin/student) ---- */
+    function teacherCalendarPanel(a, picker) {
+      const now = new Date(); let cy = Number(qparam('cy')) || now.getFullYear(); let cm = qparam('cm') !== '' && qparam('cm') != null && qparam('cm') !== undefined ? Number(qparam('cm')) : now.getMonth(); if (isNaN(cm)) cm = now.getMonth();
+      const entries = DB.read('acad', []).filter(x => x.type === 'calendar' && x.programId === a.programId && (x.sem == null || Number(x.sem) === Number(a.semester)));
+      const base = `/teach/calendar?a=${a.id}&`;
+      return `<div class="panel"><div class="ph"><h2>Academic Calendar</h2><div class="spacer"></div>${picker}
+      <button class="btn primary sm" onclick="teacherAddCal('${a.id}')">+ Add test / exam</button></div>
+    <div class="pb">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">${calNavBar(cy, cm, base)}</div>
+      ${monthGrid(entries, cy, cm, 'showDayStudent', `,'${a.programId}',${a.semester}`)}
+      <p class="hint" style="margin-top:8px">Full academic calendar for ${esc(progName(a.programId))} · Sem ${a.semester}. Tap a day to see events. ⭐ marks important dates.</p>
+    </div></div>`;
+    }
+
+    /* ---- board / back results: printable PDF by program/sem/course/university symbol ---- */
+    function backPDF(pid, sem) {
+      const qEl = document.getElementById('bkSearch'); const q = (qEl ? qEl.value : '').toLowerCase().trim();
+      let rows = DB.read('backresults', []).filter(r => r.programId === pid && (!sem || String(r.semester) === String(sem)));
+      if (q) rows = rows.filter(r => [r.name, r.symbol, r.course].some(v => String(v || '').toLowerCase().includes(q)));
+      if (!rows.length) { toast('No matching board results' + (q ? ' for “' + q + '”' : ''), 'warn'); return; }
+      const studs = DB.read('students', []);
+      const uni = sym => { const s = studs.find(x => (x.symbol || '').toLowerCase() === String(sym || '').toLowerCase()); return s && s.universitySymbol ? s.universitySymbol : ''; };
+      const body = rows.map(r => `<tr><td>${esc(r.semester || '')}</td><td>${esc(r.course || '')}</td><td>${esc(r.name || '')}</td><td>${esc(r.symbol || '')}</td><td>${esc(uni(r.symbol))}</td><td>${esc(r.year || '')}</td><td><b>${esc(r.grade || '')}</b></td></tr>`).join('');
+      const card = `<div class="admit print-target" id="admitCard" style="max-width:760px;background:#fff">
+      <div class="ah" style="display:flex;gap:12px;align-items:center;background:var(--brand);color:#fff;padding:16px 18px;border-radius:12px 12px 0 0">
+        <div class="logo" style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.2);display:grid;place-items:center;font-weight:800">${esc(collegeCode())}</div>
+        <div><b style="font-size:17px">${esc(cfg().appName || 'College')}</b><div style="font-size:12px;opacity:.9">Board / Back Exam Results · ${esc(progName(pid))}${sem ? ' · Semester ' + sem : ''} · ${todayStr()}</div></div>
+      </div>
+      <div style="padding:14px 16px"><table class="tbl" style="width:100%"><thead><tr><th>Sem</th><th>Course</th><th>Student</th><th>College Symbol</th><th>University Symbol</th><th>Year</th><th>Grade</th></tr></thead><tbody>${body}</tbody></table>
+        <p style="font-size:11px;color:#667;margin-top:10px">Generated on ${todayStr()} · ${rows.length} record(s)${q ? ' · filter: ' + esc(q) : ''}</p></div>
+    </div>`;
+      modal(`<div class="mh"><div><h2>Board results — PDF</h2><p>${rows.length} record(s)</p></div><button class="x no-print" data-x>×</button></div>
+    <div class="mb">${card}</div>
+    <div class="mf no-print"><button class="btn ghost" data-x>Close</button><button class="btn ghost" onclick="printCard('bw')">🖨 B&amp;W</button><button class="btn primary" onclick="printCard('color')">🖨 Save / Print PDF</button></div>`, { lg: true });
+    }
+
+    /* ============================================================================
+       FEATURE SET 7 — cross-device student login (server /me fallback), sync ALL
+       stores, cascading teacher assignment (program → sem → course) usable by
+       coordinators, and an Assign-Teachers page.
+       ============================================================================ */
+
+    /* ---- student login: local match first, then server bundle fallback ---- */
+    function findLocalStudent(u, p) {
+      const norm = v => String(v || '').trim().toLowerCase(); const ndp = normDate(p);
+      const idsOf = s => [s.username, s.symbol, s.entranceSymbol, s.universitySymbol, s.email].filter(Boolean).map(norm);
+      const dobOK = s => (s.dob && normDate(s.dob) === ndp) || (s.password && normDate(s.password) === ndp);
+      return DB.read('students', []).find(s => { if (!idsOf(s).includes(norm(u))) return false; if (norm(s.password) === norm(p)) return true; if (s.pwChanged) return false; return dobOK(s); }) || null;
+    }
+    function finishStudentLogin(st) {
+      DB.write('sSession', { studentId: st.id, at: nowISO() }); DB.write('session', null);
+      logEvent('Student signed in', st.programId); try { closeAuthModal(); } catch (_) { }
+      go('/me'); render(); toast('Welcome, ' + st.name, 'ok'); try { studentPullBundle(); } catch (_) { }
+    }
+    async function studentRemoteLogin(u, p) {
+      const url = (typeof serverUrl === 'function' ? serverUrl() : ''); if (!url || typeof fetch === 'undefined') return null;
+      const sym = String(u).toLowerCase().trim(); const tok = hashTok(u, p);
+      let res; try { res = await fetch(url + '/me?sym=' + encodeURIComponent(sym) + '&tok=' + encodeURIComponent(tok), { headers: { 'Accept': 'application/json' } }); } catch (_) { return null; }
+      if (!res || !res.ok) return null; let j; try { j = await res.json(); } catch (_) { return null; }
+      const d = j && j.data; if (!d || !d.profile) return null; const pr = d.profile;
+      const sid = pr.id || (d.payments && d.payments[0] && d.payments[0].studentId) || (d.marks && d.marks[0] && d.marks[0].studentId) || (d.attend && d.attend[0] && d.attend[0].studentId) || uid('st');
+      const students = DB.read('students', []);
+      let st = students.find(x => x.id === sid) || students.find(x => (x.symbol || '').toLowerCase() === sym);
+      if (!st) { st = { id: sid, name: pr.name || 'Student', symbol: pr.symbol || u, dob: pr.dob || normDate(p), programId: pr.programId, semester: pr.semester || 1, status: pr.status || 'admitted', username: pr.symbol || u, password: pr.dob || p, universitySymbol: pr.universitySymbol || '', entranceSymbol: pr.entranceSymbol || '' }; students.push(st); }
+      else { Object.assign(st, { name: pr.name || st.name, programId: pr.programId || st.programId, semester: pr.semester || st.semester, status: pr.status || st.status, universitySymbol: pr.universitySymbol || st.universitySymbol }); if (!st.password) st.password = pr.dob || p; }
+      DB.write('students', students);
+      [['payments', 'payments'], ['marks', 'marks'], ['attend', 'attend'], ['notifs', 'notifs'], ['acad', 'acad'], ['practical', 'practical']].forEach(([k, kk]) => { if (d[kk] && d[kk].length) { try { DB.write(k, mergeColl(DB.read(k, []), d[kk])); } catch (_) { } } });
+      return st;
+    }
+    function studentLogin() {
+      const u = ($('#suUser') ? $('#suUser').value : '').trim();
+      const p = ($('#suPass') ? $('#suPass').value : '').trim();
+      if (!u || !p) { toast('Enter your Symbol No and your Date of Birth', 'bad'); return; }
+      const local = findLocalStudent(u, p);
+      if (local) { if (local.approved === false) { toast('Your account is awaiting admin approval', 'warn'); return; } return finishStudentLogin(local); }
+      const url = (typeof serverUrl === 'function' ? serverUrl() : '');
+      if (url) {
+        toast('Checking your login…', 'info');
+        studentRemoteLogin(u, p).then(st => { if (st) finishStudentLogin(st); else toast('Invalid login. Use your Symbol No and Date of Birth (YYYY-MM-DD).', 'bad'); }).catch(() => toast('Could not reach the server — check your connection and try again.', 'bad'));
+        return;
+      }
+      toast('Invalid login. Use your Symbol No (or university / entrance symbol) and your Date of Birth as YYYY-MM-DD.', 'bad');
+    }
+
+    /* ---- teacher assignment: cascading program → sem → course dropdowns + search ---- */
+    function openTeacherAssign(id) {
+      const u = DB.read('staff', []).find(x => x.id === id); if (!u) return;
+      const asg = u.assignments || []; const progs = scopedPrograms(); const combos = taComboList();
+      const maxSem = Math.max(8, ...progs.map(p => p.semesters || 8));
+      modal(`<div class="mh"><div><h2>Assign classes</h2><p>${esc(u.name)} — Teacher · ${todayStr()}</p></div><button class="x" data-x>×</button></div>
+    <div class="mb">
+      ${asg.length ? `<div class="tablewrap" style="margin-bottom:12px"><table class="tbl"><thead><tr><th>Program</th><th>Sem</th><th>Course</th><th></th></tr></thead><tbody>
+        ${asg.map(x => `<tr><td>${esc(progName(x.programId))}</td><td>S${x.semester}</td><td>${esc(x.course)}</td><td><button class="iconbtn" onclick="removeTeacherAssign('${id}','${x.id}')">${I.trash}</button></td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="hint" style="margin-top:0">No classes assigned yet.</p>'}
+      <div class="card"><b>Add a class</b>
+        <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px">
+          <div class="field" style="margin:0"><label>Program</label><select class="input" id="taProg" onchange="taFill()">${progs.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div>
+          <div class="field" style="margin:0"><label>Semester</label><select class="input" id="taSem" onchange="taFill()">${Array.from({ length: maxSem }, (_, i) => i + 1).map(n => `<option value="${n}">Sem ${n}</option>`).join('')}</select></div>
+          <div class="field" style="margin:0"><label>Course / subject</label><select class="input" id="taCourse"></select></div>
+        </div>
+        <div class="field" style="margin-top:8px"><label>…or type to search</label><input class="input" id="taPick" list="taComboDL" placeholder="e.g. BBA-Finance · Sem 2 · Accounting" autocomplete="off"><datalist id="taComboDL">${combos.map(c => `<option value="${esc(c.label)}"></option>`).join('')}</datalist></div>
+        <button class="btn primary sm" style="margin-top:8px" onclick="saveTeacherAssign('${id}')">+ Add class</button>
+        ${combos.length ? '' : '<p class="hint" style="color:var(--bad)">No courses yet — add courses under Academics (program / semester) first.</p>'}
+      </div>
+    </div>
+    <div class="mf"><button class="btn primary" data-x>Done</button></div>`, { lg: true });
+      taFill();
+    }
+    function taFill() {
+      const pid = $('#taProg') ? $('#taProg').value : ''; const sem = $('#taSem') ? Number($('#taSem').value) || 1 : 1; const sel = $('#taCourse'); if (!sel) return;
+      const cs = acadList('course', pid, sem); sel.innerHTML = cs.length ? cs.map(c => `<option>${esc(c.title)}</option>`).join('') : '<option value="">— no courses in this semester —</option>';
+    }
+    function saveTeacherAssign(id) {
+      const staff = DB.read('staff', []); const u = staff.find(x => x.id === id);
+      let pid, sem, course;
+      const label = ($('#taPick') ? $('#taPick').value : '').trim();
+      const combo = label ? taComboList().find(c => c.label.toLowerCase() === label.toLowerCase()) : null;
+      if (combo) { pid = combo.pid; sem = combo.sem; course = combo.course; }
+      else { pid = $('#taProg') ? $('#taProg').value : ''; sem = $('#taSem') ? Number($('#taSem').value) || 1 : 1; course = $('#taCourse') ? $('#taCourse').value : ''; }
+      if (!pid || !course) { toast('Pick a program, semester and course', 'bad'); return; }
+      u.assignments = u.assignments || [];
+      if (u.assignments.some(x => x.programId === pid && Number(x.semester) === Number(sem) && x.course === course)) { toast('Already assigned', 'warn'); return; }
+      u.assignments.push({ id: uid('asg'), programId: pid, semester: Number(sem), course });
+      DB.write('staff', staff); logEvent(`Assigned ${u.name} → ${progName(pid)} S${sem} · ${course}`, pid); toast('Class assigned', 'ok'); openTeacherAssign(id);
+    }
+
+    /* ---- Assign Teachers page (admin + coordinators with 'teachers') ---- */
+    function viewAssignTeachers() {
+      const sup = isSuper(); const mine = myProgramIds();
+      let teachers = DB.read('staff', []).filter(s => s.role === 'teacher');
+      if (!sup && mine) teachers = teachers.filter(t => (t.programs || []).some(pid => mine.includes(pid)) || (t.assignments || []).some(a => mine.includes(a.programId)));
+      return `<div class="panel"><div class="ph"><h2>Assign Teachers</h2><span class="chip muted">${teachers.length}</span><div class="spacer"></div>
+      <input class="input sm" style="width:170px" placeholder="Search teacher…" oninput="filterRows(this,'#atTbl')">
+      ${sup ? '<button class="btn primary sm" onclick="openStaffModal()">+ Add teacher</button>' : ''}</div>
+    <div class="pb flush"><div class="tablewrap"><table class="tbl dt" id="atTbl"><thead><tr><th>Teacher</th><th>Username</th><th>Assigned classes (program · sem · course)</th><th></th></tr></thead><tbody>
+      ${teachers.length ? teachers.map(t => `<tr><td class="name">${esc(t.name)}</td><td>${esc(t.username)}</td>
+        <td class="sub">${(t.assignments || []).length ? (t.assignments || []).map(a => esc(progName(a.programId) + ' · S' + a.semester + ' · ' + a.course)).join('<br>') : '—'}</td>
+        <td><button class="btn sm primary" onclick="openTeacherAssign('${t.id}')">Assign</button></td></tr>`).join('') : `<tr><td colspan="4" class="sub">No teachers${sup ? ' yet — add one in Users / Staff.' : ' in your programs yet.'}</td></tr>`}
+    </tbody></table></div></div></div>`;
+    }
 
     function emptyState(title, body, cta, onclick) {
       return `<div class="empty"><div class="big">✦</div><h3>${esc(title)}</h3>${body ? `<p>${body}</p>` : ''}
