@@ -167,3 +167,14 @@ You should now see "Success!". If instead it says "Setup incomplete: bind a KV n
 
 
 npx create-cloudflare@latest my-xems-sync --existing-script my-xems-sync
+
+
+
+back subject of whole 8 sem, download. extract back result : here admin can import or export the board exam result of program of semester of subject of student by year. check pass and back(fail) subject, can check, export or import program of semester of subject of student bulk or individual too. program, sem, course, name, grade, year, re-take grade and year (retake exam: student can take multiple times so column will add daynamically)
+
+in student feature: admin can select University scholoraship student too of program of sem of student 
+
+gate pass management: program of semester of student-: name, date, pass count, pass count can manage by admin , import and export feature in excel based
+
+can manage admin to successful student list with program, student name, working company, post, description, photo of student 
+can add almuni too both feature can import and export too

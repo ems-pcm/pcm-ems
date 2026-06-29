@@ -5018,8 +5018,6 @@
           ${nav('papers', I.doc, 'Question Papers', 'papers')}
           ${nav('attendance', I.check, 'Entrance Attendance', 'attendance')}
           ${nav('results', I.award, 'Results', 'results')}
-        `) : ''}
-        ${(isSuper() || can('admission') || can('admissions')) ? navGroup('admission','Admission',`
           ${nav('admission', I.users, 'Admission', 'admission')}
         `) : ''}
         ${navGroup('academics','Academics',`
@@ -5265,7 +5263,7 @@
     <div class="panel"><div class="ph"><h2>Application QR</h2></div>
       <div class="pb"><div class="qrbox"><div id="qrInline"></div>
       <button class="btn subtle block sm" onclick="downloadQR('${e.id}')">⬇ Download QR</button>
-      <p class="hint" style="text-align:center">Applicants scan to apply. After approval they re-scan &amp; log in (Symbol No + DOB).</p></div></div>
+      <p class="hint" style="text-align:center">Applicants scan to apply. After approval they re-scan &amp; log in (DOB + symbol).</p></div></div>
     </div>
   </div>
 
@@ -5453,7 +5451,6 @@
       <div class="field"><label>Low-mark alert threshold (%)</label><input class="input" id="setLow" type="number" min="1" max="100" value="${cfg().lowMarkPct || 40}"></div>
       <div class="field"><label>Exam rounds / shifts (comma-separated)</label><input class="input" id="setShifts" value="${esc((cfg().examShifts || []).join(', '))}"></div>
       <button class="btn ghost block" style="margin-bottom:10px" onclick="saveCfg()">Save preferences</button>
-      <button class="btn ghost block" style="margin-bottom:10px" onclick="loadDemoConfirm()">🧪 Load sample data (demo)</button>
       <button class="btn danger block" onclick="resetAll()">Reset all data</button>
     </div></div>
     ${localBackupsPanel()}
@@ -5693,8 +5690,8 @@
       modal(`<div class="mh"><div><h2>Applicant approved ✓</h2><p>Share these login credentials with the applicant.</p></div><button class="x" data-x>×</button></div>
     <div class="mb"><div class="card" style="background:var(--brand-tint-2)">
       <dl style="display:grid;grid-template-columns:120px 1fr;gap:8px;margin:0;font-size:14px">
-      <dt style="color:var(--muted)">Username (Symbol)</dt><dd><b>${esc(a.symbol || '—')}</b></dd>
-      <dt style="color:var(--muted)">Password (DOB)</dt><dd><b>${esc(a.dob || '—')}</b></dd></dl></div>
+      <dt style="color:var(--muted)">Username (DOB)</dt><dd><b>${esc(a.dob || '—')}</b></dd>
+      <dt style="color:var(--muted)">Password (Symbol)</dt><dd><b>${esc(a.symbol)}</b></dd></dl></div>
       <p class="hint">When the applicant re-scans the QR code they log in with these to download their admit card. Admit card &amp; result will then be available to them.</p></div>
     <div class="mf"><button class="btn ghost" data-x>Close</button><button class="btn primary" onclick="closeModal();showAdmit('${a.id}')">View admit card</button></div>`);
       render();
@@ -5761,7 +5758,7 @@
         <div class="seal">${a.data.f_photo ? `<img src="${a.data.f_photo}" alt="photo" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--line);margin-bottom:8px">` : ''}<div id="admitQR"></div><div class="hint" style="text-align:center">Scan to verify</div></div>
       </div>
     </div></div>
-    <div class="mf no-print"><button class="btn ghost" data-x>Close</button><button class="btn ghost" onclick="printCard('bw')">🖨 B&amp;W</button><button class="btn primary" onclick="printCard('color')">🖨 Print / Save PDF</button></div>`, { lg: true });
+    <div class="mf no-print"><button class="btn ghost" data-x>Close</button><button class="btn primary" onclick="window.print()">🖨 Print / Save PDF</button></div>`, { lg: true });
       try { $('#admitQR').appendChild(qrImg(a.symbol || a.id, 120)); } catch (e) { }
       render(); // refresh table status
     }
@@ -6195,7 +6192,7 @@
       <div class="as-grid">${cells}</div>
       <div class="as-foot">Total questions: ${ex.questions.length} · Total marks: ${paperTotal(ex)} · Pass marks: ${ex.passMarks || 0}</div>
     </div></div>
-    <div class="mf no-print"><button class="btn ghost" data-x>Close</button><button class="btn ghost" onclick="printCard('bw')">🖨 B&amp;W</button><button class="btn primary" onclick="printCard('color')">🖨 Print / Save PDF</button></div>`, { lg: true });
+    <div class="mf no-print"><button class="btn ghost" data-x>Close</button><button class="btn primary" onclick="window.print()">🖨 Print / Save PDF</button></div>`, { lg: true });
     }
 
     function gradeTable(e, apps) {
@@ -6677,9 +6674,10 @@
       const apps = DB.read('apps', []); const a = apps.find(x => x.id === appId); const programId = $('#adm_' + appId).value;
       if (!programId) { toast('Pick a program', 'bad'); return; }
       const students = DB.read('students', []);
-      let sym = genSymbol(programId); // always make an ordered PROGRAM symbol on admit (no dummy entrance symbol kept)
+      let sym = a.symbol || genSymbol(programId);
+      if (students.some(s => s.symbol && s.symbol.toLowerCase() === sym.toLowerCase())) sym = genSymbol(programId);
       const st = {
-        id: uid('st'), name: a.data.f_name || 'Student', symbol: sym, entranceSymbol: a.symbol || '', dob: a.dob || a.data.f_dob || '', programId, semester: 1,
+        id: uid('st'), name: a.data.f_name || 'Student', symbol: sym, dob: a.dob || a.data.f_dob || '', programId, semester: 1,
         email: a.data.f_email || '', phone: a.data.f_phone || '', username: sym, password: (a.dob || a.data.f_dob || sym), status: 'admitted', admittedAt: nowISO(), fromAppId: appId,
         logs: [{ at: nowISO(), action: 'Admitted from entrance applicant ' + (a.symbol || '') }]
       };
@@ -8073,8 +8071,7 @@
       return `<div class="panel"><div class="ph"><div><div class="cat" style="color:var(--brand);font-size:11px;font-weight:700;text-transform:uppercase">Attendance</div><h2 style="margin-top:4px">${esc(p.name)}</h2></div><div class="spacer"></div>
       ${progSelect(pid, `go('/attend?p='+this.value+'&s=${sem}&d=${date}')`)} ${semSel}
       <input class="input sm" type="date" style="width:auto" value="${esc(date)}" onchange="go('/attend?p=${pid}&s=${sem}&d='+this.value)">
-      <button class="btn ghost sm" onclick="exportAttend('${pid}',${sem})">⬇ Summary</button>
-      <button class="btn ghost sm" onclick="exportAttendDetail('${pid}',${sem})">⬇ Detail (date/course)</button>
+      <button class="btn ghost sm" onclick="exportAttend('${pid}',${sem})">⬇ Excel</button>
       <label class="btn ghost sm" style="margin:0">⬆ Import<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importAttendByDay('${pid}',${sem},this)"></label></div>
     <div class="pb">
       <p class="hint" style="margin-top:0">Tick the students who were <b>absent</b> on ${esc(date)}, then save. Students exceeding ${limit} absences in a month are alerted automatically.</p>
@@ -8334,17 +8331,17 @@
        ============================================================================ */
 
     /* ---------- DATATABLE: pagination + page size ---------- */
-    const DT_SIZES = [['All', 999999], [15, 15], [20, 20], [50, 50], [100, 100], [200, 200]];
+    const DT_SIZES = [15, 20, 50, 100, 200];
     function enhanceTables() {
       document.querySelectorAll('table.dt').forEach(tbl => {
         if (tbl.dataset.dtMounted || !tbl.tBodies[0]) return; tbl.dataset.dtMounted = '1';
         const wrap = tbl.closest('.tablewrap') || tbl;
         const bar = document.createElement('div'); bar.className = 'dtbar';
-        bar.innerHTML = `<label class="dtsz">Show <select class="input sm">${DT_SIZES.map(o => `<option value="${o[1]}">${o[0]}</option>`).join('')}</select> entries</label>`;
+        bar.innerHTML = `<label class="dtsz">Show <select class="input sm">${DT_SIZES.map(n => `<option value="${n}">${n}</option>`).join('')}</select> entries</label>`;
         wrap.parentNode.insertBefore(bar, wrap);
         const foot = document.createElement('div'); foot.className = 'dtfoot'; wrap.parentNode.insertBefore(foot, wrap.nextSibling);
-        const sel = bar.querySelector('select'); sel.value = '999999';
-        tbl._dt = { page: 1, size: 999999, foot };
+        const sel = bar.querySelector('select'); sel.value = '15';
+        tbl._dt = { page: 1, size: 15, foot };
         sel.addEventListener('change', () => { tbl._dt.size = Number(sel.value); tbl._dt.page = 1; paintDT(tbl); });
         paintDT(tbl);
       });
@@ -9193,8 +9190,8 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
       <div class="loginbox">
         <div class="logintitle">🔑 Approved applicant login</div>
         <p class="hint" style="margin-top:0">After the admin approves your application you receive a <b>Symbol No</b>. Log in below to download your admit card and check your result.</p>
-        <div class="field"><label>Username — your Symbol No</label><input class="input" id="liSym" placeholder="e.g. PCM-ENT-026-0001" onkeydown="if(event.key==='Enter')portalLogin('${eid}')"></div>
-        <div class="field"><label>Password — your Date of Birth</label><div class="pwrap"><input class="input" id="liDob" type="password" placeholder="YYYY-MM-DD" onkeydown="if(event.key==='Enter')portalLogin('${eid}')"><button type="button" class="pwtoggle" onclick="togglePass('liDob',this)">👁</button></div></div>
+        <div class="field"><label>Username — your Date of Birth</label><input class="input" type="date" id="liDob"></div>
+        <div class="field"><label>Password — your Symbol No</label><input class="input" id="liSym" placeholder="e.g. BS-2026-0001" onkeydown="if(event.key==='Enter')portalLogin('${eid}')"></div>
         <button class="btn primary block" onclick="portalLogin('${eid}')">Log in</button>
         <p class="hint" style="text-align:center;margin:10px 0 0">Not approved yet? Switch to <b>Apply</b> above, or re-scan this QR later to check back.</p>
       </div>`;
@@ -9354,7 +9351,6 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
       <input class="input sm" style="width:150px" placeholder="Search…" oninput="filterRows(this,'#backTbl')">
       ${_selProg('backresults', pid)} ${_selSem('backresults', pid, sem, true)}
       <button class="btn ghost sm" onclick="go('/backresults?p=${pid}&s=${sem}&back=${onlyBack ? '0' : '1'}')">${onlyBack ? 'Show all' : 'Back only'}</button>
-      <button class="btn ghost sm" onclick="backTemplate('${pid}','${sem}')">⬇ Template</button>
       <button class="btn ghost sm" onclick="exportBack('${pid}','${sem}',false)">⬇ Excel</button>
       <button class="btn ghost sm" onclick="exportBack('${pid}','',false)">⬇ All 8 sem</button>
       <button class="btn ghost sm" onclick="exportBack('${pid}','${sem}',true)">⬇ Back only</button>
@@ -10317,7 +10313,6 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
       <input class="input sm" style="width:150px" placeholder="Search…" oninput="filterRows(this,'#backTbl')">
       ${_selProg('backresults', pid)} ${_selSem('backresults', pid, sem, true)}
       <button class="btn ghost sm" onclick="go('/backresults?p=${pid}&s=${sem}&back=${onlyBack ? '0' : '1'}')">${onlyBack ? 'Show all' : 'Back only'}</button>
-      <button class="btn ghost sm" onclick="backTemplate('${pid}','${sem}')">⬇ Template</button>
       <button class="btn ghost sm" onclick="exportBack('${pid}','${sem}',false)">⬇ Excel</button>
       <button class="btn ghost sm" onclick="exportBack('${pid}','',false)">⬇ All 8 sem</button>
       <button class="btn ghost sm" onclick="exportBack('${pid}','${sem}',true)">⬇ Back only</button>
@@ -10954,7 +10949,7 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
           <div class="field"><label>Email</label><input class="input" id="eaEmail"></div>
         </div></div>
       </div>
-      <div class="hint">Entrance symbol auto-generates (e.g. ${esc(collegeCode())}-ENT-${esc(String(new Date().getFullYear()).slice(-3))}-0001). The program symbol is created on admission. Login = Symbol + DOB.</div>
+      <div class="hint">Symbol auto-generates per program (e.g. ${esc(formatSymbol(progByName((progs[0] || {}).name) || { code: ((progs[0] || {}).name || 'PRG'), symbolFormat: '{COLLEGE}-{CODE}-{YYY}-{####}' }, 1))}). Added as <b>approved</b>; login = Symbol + DOB.</div>
     </div>
     <div class="mf"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" onclick="saveEntranceApplicant('${eid}')">Add applicant</button></div>`);
       const box = document.getElementById('eaPhotoBox'); if (box) box.style.display = 'grid';
@@ -11171,316 +11166,6 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
 
     /* ---- render notice bodies (admin-authored) as formatted HTML in dashboards ---- */
     function noticeBodyHTML(n) { return n && (n.bodyHtml || (n.body ? esc(n.body) : '')); }
-
-    /* ============================================================================
-       FEATURE SET 5 — ordered symbols (read previous), entrance ENT symbol +
-       program symbol on admit (no dummy), searchable teacher assignment,
-       remarks editor, robust admit-card & general PDF/print (no blank pages,
-       colour / B&W), board-exam template, attendance detail export.
-       ============================================================================ */
-
-    /* ---- ordered symbols: read the previous (highest) number, not a count ---- */
-    function symSeqNum(sym) { const m = String(sym || '').match(/(\d+)\s*$/); return m ? parseInt(m[1], 10) : 0; }
-    function genSymbol(programId) {
-      const p = progById(programId);
-      const studs = DB.read('students', []);
-      let max = 0; studs.filter(s => s.programId === programId).forEach(s => { const n = symSeqNum(s.symbol); if (n > max) max = n; });
-      let n = max + 1, sym = formatSymbol(p, n);
-      while (studs.some(s => (s.symbol || '').toLowerCase() === sym.toLowerCase())) { n++; sym = formatSymbol(p, n); }
-      return sym;
-    }
-    /* ---- entrance symbol PCM-ENT-026-0001 (ordered per event); program symbol made on admit ---- */
-    function genEntranceSymbol(e, programName) {
-      const apps = DB.read('apps', []);
-      const entProg = { code: 'ENT', name: 'Entrance', symbolFormat: '{COLLEGE}-ENT-{YYY}-{####}' };
-      let max = 0; apps.forEach(a => { if (a.eventId === (e && e.id) && /-ENT-/i.test(a.symbol || '')) { const n = symSeqNum(a.symbol); if (n > max) max = n; } });
-      let n = max + 1, sym = formatSymbol(entProg, n);
-      while (apps.some(a => a.symbol && a.symbol.toLowerCase() === sym.toLowerCase())) { n++; sym = formatSymbol(entProg, n); }
-      return sym;
-    }
-
-    /* =====================================================================
-       ROBUST PRINT — admit card (exact, single page) + colour / B&W,
-       and a general "print only this card" path for any .print-target.
-       ===================================================================== */
-    (function injectPrintCSS5() {
-      try {
-        const css = `
-        #cardPrintRoot{display:none}
-        .admit,.ansheet{ -webkit-print-color-adjust:exact; print-color-adjust:exact }
-        @media print{
-          html,body{height:auto !important}
-          body.printing-card > *{ display:none !important }
-          body.printing-card #cardPrintRoot{ display:block !important }
-          body.printing-card #cardPrintRoot, body.printing-card #cardPrintRoot *{ visibility:visible !important }
-          #cardPrintRoot .admit, #cardPrintRoot .ansheet{ box-shadow:none !important; margin:0 auto !important; max-width:760px !important; width:100% !important; page-break-inside:avoid }
-          #cardPrintRoot .admit{ border:1px solid #d0d5dd !important; border-radius:12px !important }
-          
-          .print-bw, .print-bw *{ color:#000 !important; background:#fff !important; border-color:#000 !important; box-shadow:none !important }
-          .print-bw .ah{ background:#fff !important; color:#000 !important; border-bottom:2px solid #000 !important }
-          .print-bw .ah .logo{ background:#000 !important; color:#fff !important }
-          .print-bw img{ filter:grayscale(1) contrast(1.1) !important }
-          .admit-bw, .admit-bw *{ color:#000 !important; background:#fff !important; border-color:#000 !important; box-shadow:none !important }
-          .admit-bw .ah{ background:#fff !important; color:#000 !important; border-bottom:2px solid #000 !important }
-          .admit-bw .ah .logo{ background:#000 !important; color:#fff !important }
-          .admit-bw img{ filter:grayscale(1) contrast(1.1) !important }
-          @page{ size:auto; margin:10mm }
-        }`;
-        const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
-      } catch (_) { }
-    })();
-    function printAdmit(mode){ return printCard(mode); }
-    function printCard(mode) {
-      const card = document.querySelector('.modal .print-target') || document.querySelector('.print-target') || document.getElementById('admitCard');
-      if (!card) { window.print(); return; }
-      const old = document.getElementById('cardPrintRoot'); if (old) old.remove();
-      const root = document.createElement('div'); root.id = 'cardPrintRoot';
-      const clone = card.cloneNode(true); clone.classList.remove('print-target');
-      if (mode === 'bw') clone.classList.add('print-bw');
-      root.appendChild(clone); document.body.appendChild(root);
-      document.body.classList.add('printing-card');
-      const done = () => { document.body.classList.remove('printing-card'); const r = document.getElementById('cardPrintRoot'); if (r) r.remove(); window.removeEventListener('afterprint', done); };
-      window.addEventListener('afterprint', done);
-      setTimeout(() => { try { window.print(); } catch (_) { } setTimeout(done, 1500); }, 60);
-    }
-
-    /* =====================================================================
-       SEARCHABLE TEACHER ASSIGNMENT — pick program · sem · course by typing
-       ===================================================================== */
-    function taComboList() {
-      const out = []; DB.read('programs', []).forEach(p => { const sems = p.semesters || 8; for (let s = 1; s <= sems; s++) { acadList('course', p.id, s).forEach(c => { out.push({ pid: p.id, sem: s, course: c.title, label: `${p.name} · Sem ${s} · ${c.title}` }); }); } });
-      return out;
-    }
-    function openTeacherAssign(id) {
-      const u = DB.read('staff', []).find(x => x.id === id); if (!u) return;
-      const asg = u.assignments || []; const combos = taComboList();
-      modal(`<div class="mh"><div><h2>Assign classes</h2><p>${esc(u.name)} — Teacher · ${todayStr()}</p></div><button class="x" data-x>×</button></div>
-    <div class="mb">
-      ${asg.length ? `<div class="tablewrap" style="margin-bottom:12px"><table class="tbl"><thead><tr><th>Program</th><th>Sem</th><th>Course</th><th></th></tr></thead><tbody>
-        ${asg.map(x => `<tr><td>${esc(progName(x.programId))}</td><td>S${x.semester}</td><td>${esc(x.course)}</td><td><button class="iconbtn" onclick="removeTeacherAssign('${id}','${x.id}')">${I.trash}</button></td></tr>`).join('')}
-      </tbody></table></div>` : '<p class="hint" style="margin-top:0">No classes assigned yet.</p>'}
-      <div class="card"><b>Add a class</b>
-        <p class="hint" style="margin:6px 0">Type to search by <b>program · semester · course</b> and pick one.</p>
-        <div class="field"><input class="input" id="taPick" list="taComboDL" placeholder="e.g. BBA-Finance · Sem 2 · Accounting" autocomplete="off">
-          <datalist id="taComboDL">${combos.map(c => `<option value="${esc(c.label)}"></option>`).join('')}</datalist></div>
-        <button class="btn primary sm" onclick="saveTeacherAssign('${id}')">+ Add class</button>
-        ${combos.length ? '' : '<p class="hint" style="color:var(--bad)">No courses found — add courses under Academics (program / semester) first.</p>'}
-      </div>
-    </div>
-    <div class="mf"><button class="btn primary" data-x>Done</button></div>`, { lg: true });
-    }
-    function saveTeacherAssign(id) {
-      const staff = DB.read('staff', []); const u = staff.find(x => x.id === id);
-      const label = ($('#taPick') ? $('#taPick').value : '').trim();
-      const combo = taComboList().find(c => c.label.toLowerCase() === label.toLowerCase());
-      if (!combo) { toast('Pick a valid program · sem · course from the list', 'bad'); return; }
-      u.assignments = u.assignments || [];
-      if (u.assignments.some(x => x.programId === combo.pid && Number(x.semester) === combo.sem && x.course === combo.course)) { toast('Already assigned', 'warn'); return; }
-      u.assignments.push({ id: uid('asg'), programId: combo.pid, semester: combo.sem, course: combo.course });
-      DB.write('staff', staff); logEvent(`Assigned ${u.name} → ${combo.label}`, combo.pid); toast('Class assigned', 'ok'); openTeacherAssign(id);
-    }
-
-    /* =====================================================================
-       TEACHER REMARKS — rich-text editor
-       ===================================================================== */
-    function teacherRemarksPanel(a, picker) {
-      const studs = teacherStudents(a);
-      const mine = DB.read('remarks', []).filter(r => r.programId === a.programId && Number(r.semester) === Number(a.semester) && r.course === a.course);
-      return `<div class="panel"><div class="ph"><h2>Remarks — ${esc(a.course)}</h2><div class="spacer"></div>${picker}</div>
-    <div class="pb">
-      <div class="field" style="max-width:420px"><label>Student</label><select class="input" id="rmStu">${studs.map(s => `<option value="${s.id}">${esc(s.name)} (${esc(s.symbol || '')})</option>`).join('')}</select></div>
-      <div class="field"><label>Remark</label>${rte('rmEditor', '')}</div>
-      <button class="btn primary sm" onclick="teacherAddRemark('${a.id}')">+ Add remark</button>
-      <p class="hint">Admin &amp; coordinator can see these remarks by program / semester / course.</p>
-      ${mine.length ? `<div class="tablewrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>Date</th><th>Student</th><th>Remark</th><th></th></tr></thead><tbody>
-        ${mine.map(r => { const s = studs.find(x => x.id === r.studentId); return `<tr><td class="sub">${fmtDate(r.at)}</td><td>${esc(s ? s.name : '—')}</td><td>${r.textHtml || esc(r.text)}</td><td>${(currentStaff() && r.teacherId === currentStaff().id) ? `<button class="iconbtn" onclick="deleteRemark('${r.id}')">${I.trash}</button>` : ''}</td></tr>`; }).join('')}
-      </tbody></table></div>` : '<p class="hint">No remarks yet for this class.</p>'}
-    </div></div>`;
-    }
-    function teacherAddRemark(aid) {
-      const me = currentStaff(); const a = teacherAssignments(me).find(x => x.id === aid); if (!a) return;
-      const sid = $('#rmStu').value; const ed = document.getElementById('rmEditor');
-      const html = ed ? ed.innerHTML.trim() : ''; const text = ed ? ((ed.innerText || ed.textContent) || '').trim() : '';
-      if (!text) { toast('Write a remark', 'bad'); return; }
-      const list = DB.read('remarks', []);
-      list.unshift({ id: uid('rm'), studentId: sid, programId: a.programId, semester: Number(a.semester), course: a.course, teacherId: me ? me.id : '', teacherName: me ? me.name : 'Teacher', text, textHtml: html, at: nowISO() });
-      DB.write('remarks', list); logEvent('Added remark · ' + a.course, a.programId); toast('Remark added', 'ok'); render();
-    }
-
-    /* =====================================================================
-       BOARD-EXAM (back results) EXCEL TEMPLATE  +  attendance detail export
-       ===================================================================== */
-    function backTemplate(pid, sem) {
-      const studs = DB.read('students', []).filter(s => s.programId === pid && (!sem || String(s.semester) === String(sem)) && s.status !== 'graduated');
-      const courses = acadList('course', pid, sem || 1).map(c => c.title);
-      const rows = (studs.length ? studs : [{ symbol: '', name: '' }]).flatMap(s => (courses.length ? courses : ['']).map(c => ({
-        Date: todayStr(), Symbol: s.symbol || '', Name: s.name || '', Course: c, Year: new Date().getFullYear(), Grade: '', Retake1: '', Retake2: ''
-      })));
-      sheetDownload(rows, `BoardExam-Template-${(progName(pid) || 'program').replace(/\s+/g, '-')}${sem ? '-S' + sem : ''}.xlsx`, 'Template');
-      toast('Template downloaded', 'ok');
-    }
-    function exportAttendDetail(pid, sem) {
-      const studs = DB.read('students', []).filter(s => s.programId === pid && Number(s.semester) === Number(sem) && s.status !== 'graduated');
-      const ids = new Set(studs.map(s => s.id));
-      const recs = DB.read('attend', []).filter(a => a.absent && ((a.programId === pid && (a.semester == null || Number(a.semester) === Number(sem)) && ids.has(a.studentId))));
-      const byId = {}; studs.forEach(s => byId[s.id] = s);
-      const rows = recs.map(a => { const s = byId[a.studentId] || {}; return { Date: a.date || '', Symbol: s.symbol || '', Student: s.name || '', Program: progName(pid), Semester: sem, Course: a.course || '(general)', Status: 'Absent' }; })
-        .sort((x, y) => String(x.Date).localeCompare(String(y.Date)) || String(x.Student).localeCompare(String(y.Student)));
-      if (!rows.length) { toast('No absence records for this program/semester', 'warn'); return; }
-      sheetDownload(rows, `Attendance-Detail-${(progName(pid) || '').replace(/\s+/g, '-')}-S${sem}-${todayStr()}.xlsx`, 'Attendance');
-      logEvent('Exported attendance detail (date/course-wise)', pid);
-    }
-
-    /* =====================================================================
-       ACCESS CONTROL — make sure every page/feature is listed
-       ===================================================================== */
-    try {
-      ['admission', 'attendance', 'eattendance', 'papers', 'results', 'examtypes', 'reports', 'promote', 'logs', 'events', 'marks', 'calendar', 'schedule', 'exams', 'courses', 'fees', 'students'].forEach(k => { if (!PERMS.includes(k)) PERMS.push(k); });
-      Object.assign(PERM_LABELS, { admission: 'Admission', attendance: 'Student attendance', eattendance: 'Entrance attendance', papers: 'Question papers', results: 'Entrance results', examtypes: 'Exam types', reports: 'Reports', promote: 'Promote / shift', logs: 'Activity trace', events: 'Events / entrance', marks: 'Internal marks', calendar: 'Academic calendar', schedule: 'Class schedule', exams: 'Exam schedule', courses: 'Courses', fees: 'Fees', students: 'Students' });
-      if (PERM_CATEGORIES['Entrance & Admission'] && !PERM_CATEGORIES['Entrance & Admission'].includes('admission')) PERM_CATEGORIES['Entrance & Admission'].push('admission');
-      // re-sweep leftovers into Other
-      const listed = new Set(); Object.values(PERM_CATEGORIES).forEach(arr => arr.forEach(k => listed.add(k)));
-      const leftover = PERMS.filter(k => !listed.has(k));
-      PERM_CATEGORIES['Other'] = Array.from(new Set((PERM_CATEGORIES['Other'] || []).concat(leftover)));
-      if (!PERM_CATEGORIES['Other'].length) delete PERM_CATEGORIES['Other'];
-    } catch (_) { }
-
-    /* ============================================================================
-       SAMPLE DATA — one coherent demo dataset that exercises every feature.
-       Auto-loads on a truly-empty install; also available from Settings → Data.
-       ============================================================================ */
-    function loadDemoData(silent) {
-      const yr = new Date().getFullYear(); const Y3 = String(yr).slice(-3);
-      setCfg({ collegeCode: 'PCM', appName: (cfg().appName || 'PCM College'), appLogo: (cfg().appLogo || 'PCM'), lowMarkPct: cfg().lowMarkPct || 40, gatePassLimit: 3 });
-      const fmt = '{COLLEGE}-{CODE}-{YYY}-{####}';
-      const programs = [
-        { id: 'pg_bbaf', name: 'BBA-Finance', code: 'BBAF', semesters: 8, symbolFormat: fmt },
-        { id: 'pg_csit', name: 'BSc CSIT', code: 'CSIT', semesters: 8, symbolFormat: fmt }
-      ];
-      DB.write('programs', programs);
-      DB.write('examtypes', ['First Term', 'Mid Term', 'Pre-Board', 'Final', 'Class Test'].map(n => ({ id: uid('et'), name: n })));
-
-      const courseSets = {
-        pg_bbaf: { 1: ['Principles of Management', 'Financial Accounting', 'Business Economics'], 2: ['Cost Accounting', 'Business Statistics', 'Microeconomics'] },
-        pg_csit: { 1: ['C Programming', 'Digital Logic', 'Mathematics I'], 2: ['Data Structures', 'OOP in C++', 'Discrete Maths'] }
-      };
-      const acad = [];
-      programs.forEach(p => {
-        Object.entries(courseSets[p.id]).forEach(([sem, courses]) => {
-          courses.forEach((title, i) => acad.push({ id: uid('ac'), type: 'course', programId: p.id, semester: Number(sem), title, code: p.code + sem + '0' + (i + 1), credit: 3, teacher: '', syllabus: 'Introduction to ' + title + '. Units cover the core concepts, methods and practical applications.' }));
-        });
-        [['Tuition fee', 25000], ['Exam fee', 3000], ['Library fee', 1500]].forEach(([title, amount]) => acad.push({ id: uid('ac'), type: 'fee', programId: p.id, semester: 1, title, amount }));
-        courseSets[p.id][1].forEach((c, i) => acad.push({ id: uid('ac'), type: 'cls', programId: p.id, semester: 1, day: ['Sun', 'Mon', 'Tue'][i % 3], time: ['10:00', '11:00', '12:00'][i % 3], course: c, room: 'R-' + (101 + i) }));
-        courseSets[p.id][1].forEach((c, i) => acad.push({ id: uid('ac'), type: 'exam', programId: p.id, semester: 1, course: c, date: yr + '-07-' + String(10 + i).padStart(2, '0'), time: '10:00', room: 'Hall-' + (i + 1) }));
-        acad.push({ id: uid('ac'), type: 'calendar', programId: p.id, sem: 1, title: 'Orientation day', date: yr + '-06-20', kind: 'Event', important: true, approved: true });
-      });
-      DB.write('acad', acad);
-
-      const firstNames = ['Sangam', 'Asha', 'Bibek', 'Nisha', 'Prakash', 'Sita', 'Rojan', 'Anita', 'Hari', 'Gita', 'Kabita', 'Suman'];
-      const lastNames = ['Giri', 'Rai', 'Lama', 'Thapa', 'Karki', 'Sharma', 'Gurung', 'Magar', 'Bhandari', 'Shrestha'];
-      const dobs = ['2003-01-15', '2003-02-20', '2002-11-05', '2003-05-12', '2002-08-30', '2003-07-22'];
-      const students = [];
-      programs.forEach((p, pi) => {
-        for (let i = 0; i < 6; i++) {
-          const sym = formatSymbol(p, i + 1);
-          const name = firstNames[(i + pi * 6) % firstNames.length] + ' ' + lastNames[(i * 2 + pi * 3) % lastNames.length];
-          const ndob = dobs[i % dobs.length];
-          students.push({ id: uid('st'), name, symbol: sym, entranceSymbol: 'PCM-ENT-' + Y3 + '-' + String(i + 1 + pi * 6).padStart(4, '0'), dob: ndob, username: sym, password: ndob, programId: p.id, semester: 1, email: name.split(' ')[0].toLowerCase() + i + '@example.com', phone: '98' + String(40000000 + i * 137 + pi * 9999).slice(0, 8), status: 'admitted', admittedAt: nowISO(), logs: [{ at: nowISO(), action: 'Admitted (sample data)' }] });
-        }
-      });
-      if (students[1]) students[1].scholarship = { type: 'Merit', year: yr, amount: '50%', note: 'Top scorer', at: nowISO() };
-      DB.write('students', students);
-
-      const payments = [];
-      students.forEach((st, idx) => {
-        acad.filter(x => x.type === 'fee' && x.programId === st.programId && Number(x.semester) === Number(st.semester)).forEach((f, fi) => {
-          const paid = (idx % 3 !== 0) && fi < 2;
-          payments.push({ id: uid('pay'), studentId: st.id, programId: st.programId, semester: st.semester, title: f.title, amount: f.amount, paid, fine: (!paid && fi === 0) ? 500 : 0, discount: 0, paidAt: paid ? nowISO() : null, approved: true });
-        });
-      });
-      DB.write('payments', payments);
-
-      const marks = [];
-      students.forEach(st => {
-        const cs = courseSets[st.programId][1].slice(0, 2);
-        ['First Term', 'Mid Term'].forEach((exam, ei) => cs.forEach((course, ci) => {
-          const obtained = 38 + ((st.symbol.charCodeAt(st.symbol.length - 1) + ei * 7 + ci * 11) % 55);
-          marks.push({ id: uid('mk'), studentId: st.id, programId: st.programId, semester: 1, course, exam, obtained, full: 100, year: yr });
-        }));
-      });
-      DB.write('marks', marks);
-
-      const tcourses = [['pg_bbaf', 1, 'Principles of Management'], ['pg_csit', 1, 'C Programming']];
-      const practical = [];
-      tcourses.forEach(([pid, sem, course]) => {
-        students.filter(s => s.programId === pid && s.semester === sem).forEach((s, i) => {
-          practical.push({ id: uid('pr'), studentId: s.id, programId: pid, semester: sem, course, lab: 14 + (i % 6), test: 12 + (i % 7), assignment: 13 + (i % 6), labExam: 11 + (i % 8), approved: i < 3 ? true : null, approvedBy: i < 3 ? 'Bina Coordinator' : undefined, approvedAt: i < 3 ? nowISO() : undefined, by: 'tch_demo', at: nowISO() });
-        });
-      });
-      DB.write('practical', practical);
-
-      const attend = []; const dates = [yr + '-06-22', yr + '-06-23', yr + '-06-24', yr + '-06-25'];
-      tcourses.forEach(([pid, sem, course]) => {
-        const cls = students.filter(s => s.programId === pid && s.semester === sem);
-        dates.forEach((d, di) => { const s = cls[di % cls.length]; if (s) attend.push({ id: uid('at'), studentId: s.id, programId: pid, semester: sem, course, date: d, absent: true, by: 'Mr. Sharma' }); });
-      });
-      DB.write('attend', attend);
-
-      DB.write('remarks', [
-        { id: uid('rm'), studentId: students[0].id, programId: students[0].programId, semester: 1, course: 'Principles of Management', teacherId: 'tch_demo', teacherName: 'Mr. Sharma', text: 'Excellent participation in class.', textHtml: '<b>Excellent</b> participation in class.', at: nowISO() },
-        { id: uid('rm'), studentId: students[2].id, programId: students[2].programId, semester: 1, course: 'Principles of Management', teacherId: 'tch_demo', teacherName: 'Mr. Sharma', text: 'Needs to submit assignment 2.', at: nowISO() }
-      ]);
-
-      const su = (DB.read('staff', []).find(x => x.role === 'super_admin')) || { id: 'su', username: 'admin', password: 'admin123', name: 'Super Admin', role: 'super_admin', programs: [], perms: {} };
-      DB.write('staff', [su,
-        { id: 'co_bba', name: 'Bina Coordinator', username: 'coord', password: 'coord123', role: 'coordinator', programs: ['pg_bbaf'], perms: { students: true, marks: true, reports: true, practical: true, remarks: true, notices: true, attendance: true, calendar: true, schedule: true, exams: true, courses: true, fees: true } },
-        { id: 'acc', name: 'Ram Accountant', username: 'account', password: 'account123', role: 'accounting', programs: ['pg_bbaf', 'pg_csit'], perms: { fees: true } },
-        { id: 'tch_demo', name: 'Mr. Sharma', username: 'teacher', password: 'teacher123', role: 'teacher', programs: ['pg_bbaf', 'pg_csit'], perms: {}, assignments: [
-          { id: uid('asg'), programId: 'pg_bbaf', semester: 1, course: 'Principles of Management' },
-          { id: uid('asg'), programId: 'pg_csit', semester: 1, course: 'C Programming' }
-        ] }
-      ]);
-
-      const apps = []; const appNames = ['Sabin Adhikari', 'Manish Tamang', 'Puja Koirala', 'Rita Basnet', 'Kiran Dahal', 'Sneha Pandey'];
-      const appDobs = ['2004-03-12', '2004-05-09', '2003-12-01', '2004-07-19', '2003-09-23', '2004-01-30'];
-      appNames.forEach((nm, i) => {
-        const sym = 'PCM-ENT-' + Y3 + '-' + String(i + 1).padStart(4, '0');
-        const status = i < 3 ? 'result' : (i < 5 ? 'approved' : 'submitted');
-        apps.push({ id: uid('ap'), eventId: 'ev_ent', category: 'entrance_exam', program: (i % 2 ? 'BSc CSIT' : 'BBA-Finance'), symbol: sym, dob: appDobs[i], status, attendance: i < 4 ? 'present' : null, result: i < 3 ? { outcome: 'Pass', marks: 60 + i * 6 } : null, data: { f_name: nm, f_dob: appDobs[i], f_email: nm.split(' ')[0].toLowerCase() + '@mail.com', f_phone: '9841' + String(100000 + i * 123).slice(0, 6) }, createdAt: nowISO(), updatedAt: nowISO(), logs: [{ at: nowISO(), action: 'Sample applicant' }] });
-      });
-      DB.write('events', [{ id: 'ev_ent', title: 'Admission Open ' + yr, category: 'entrance_exam', date: yr + '-06-30', location: 'PCM Campus', programs: [{ name: 'BBA-Finance', fields: [] }, { name: 'BSc CSIT', fields: [] }], papers: [], createdAt: nowISO() }]);
-      DB.write('apps', apps);
-
-      DB.write('gatepass', [
-        { id: uid('gp'), programId: 'pg_bbaf', semester: 1, name: students[0].name, symbol: students[0].symbol, date: yr + '-06-15', passCount: 1, remarks: 'Medical appointment' },
-        { id: uid('gp'), programId: 'pg_bbaf', semester: 1, name: students[1].name, symbol: students[1].symbol, date: yr + '-06-18', passCount: 2, remarks: 'Personal work' }
-      ]);
-      DB.write('backresults', [
-        { id: uid('bk'), programId: 'pg_csit', semester: 1, course: 'Mathematics I', name: (students[6] || {}).name || 'Student', symbol: (students[6] || {}).symbol || '', year: yr, grade: 'F', retakes: [] }
-      ]);
-      DB.write('placements', [{ id: uid('pl'), programId: 'pg_bbaf', name: 'Sunil Rana', company: 'Nabil Bank', post: 'Trainee Officer', year: yr, contact: 'sunil@nabil.com', description: 'Placed via campus recruitment drive.' }]);
-      DB.write('alumni', [{ id: uid('al'), programId: 'pg_bbaf', name: 'Maya Joshi', batch: '2022', company: 'NIC Asia', post: 'Business Analyst', contact: 'maya@example.com' }]);
-      DB.write('notifs', [
-        { id: uid('nt'), at: nowISO(), role: 'student', programId: null, semester: null, course: null, studentId: null, staffId: null, title: 'Welcome to ' + (cfg().appName || 'PCM College'), body: 'Classes begin next week. Please check your schedule and clear any pending fees.', bodyHtml: 'Classes begin <b>next week</b>. Please check your schedule and clear any pending fees.', from: 'Admin (' + todayStr() + ')', readBy: [] },
-        { id: uid('nt'), at: nowISO(), role: 'teacher', programId: null, semester: null, title: 'Staff meeting', body: 'Faculty meeting on Friday 3 PM in the conference hall.', bodyHtml: 'Faculty meeting on <b>Friday 3 PM</b> in the conference hall.', from: 'Admin (' + todayStr() + ')', readBy: [] }
-      ]);
-
-      setCfg({ demoLoaded: true });
-      try { logEvent('Loaded sample data'); } catch (_) { }
-      if (!silent) { toast('Sample data loaded', 'ok'); go('/'); render(); }
-    }
-    function loadDemoConfirm() {
-      confirmDelete({ title: 'Load sample data?', danger: false, confirmText: 'Load sample data', body: 'This <b>replaces</b> all current programs, students, staff, entrance applicants, marks, fees and more with a ready-made demo dataset. Export a backup first if you want to keep your current data.', onYes: () => loadDemoData(false) });
-    }
-
-    /* auto-load once on a truly-empty install so the app opens with data */
-    (function autoDemo() {
-      try {
-        if (!cfg().demoLoaded && !(DB.read('programs', []) || []).length && !(DB.read('students', []) || []).length) {
-          loadDemoData(true);
-        }
-      } catch (_) { }
-    })();
 
     function emptyState(title, body, cta, onclick) {
       return `<div class="empty"><div class="big">✦</div><h3>${esc(title)}</h3>${body ? `<p>${body}</p>` : ''}
