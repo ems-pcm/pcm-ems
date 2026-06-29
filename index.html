@@ -11772,6 +11772,47 @@ async function connectSync(){ const out=(m,good)=>{ const el=document.getElement
       else toast('No duplicate or out-of-order symbols found', 'ok');
     }
 
+    /* ============================================================================
+       FEATURE SET 9 — applicant gets a Symbol No at submit again, WITHOUT the
+       multi-device duplicates: the number comes from the server's atomic /seq
+       counter (unique + ordered). Falls back to a local number if offline; the
+       admin device's reconcile pass still de-dupes any offline collisions.
+       ============================================================================ */
+    async function allocEntranceSymbol(e, prog) {
+      const cc = (e && e.collegeCode) || (typeof collegeCode === 'function' ? collegeCode() : '') || 'COL';
+      const Y3 = String((new Date(e && e.date || Date.now()).getFullYear()) || new Date().getFullYear()).slice(-3);
+      const fmt = n => `${cc}-ENT-${Y3}-${String(n).padStart(4, '0')}`;
+      // primary: server counter (unique across every device & network)
+      const eps = [];
+      try { const ib = (typeof publicInbox === 'function') ? publicInbox() : null; if (ib && ib.url) eps.push(ib.url); } catch (_) { }
+      try { const su = (typeof serverUrl === 'function') ? serverUrl() : ''; if (su && eps.indexOf(su) < 0) eps.push(su); } catch (_) { }
+      for (const base of eps) {
+        if (typeof fetch === 'undefined') break;
+        try {
+          const r = await fetch(base + '/seq?event=' + encodeURIComponent(e.id), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: '{}' });
+          if (r && r.ok) { const j = await r.json(); if (j && j.seq) return fmt(j.seq); }
+        } catch (_) { }
+      }
+      // offline fallback: best-effort local number (admin reconcile fixes any clash later)
+      try { return genEntranceSymbol(e, prog); } catch (_) { return ''; }
+    }
+    async function portalApply(eid) {
+      const e = DB.read('events', []).find(x => x.id === eid); if (!e) return;
+      const prog = ($('#ppProg') && $('#ppProg').value) || (e.programs || [])[0] && (e.programs || [])[0].name || '';
+      const data = collectInputs($('#ppFields'));
+      for (const f of allFieldsFor(e, prog)) { if (f.required && !String(data[f.id] || '').trim() && f.type !== 'file') { toast('Please fill: ' + f.label, 'bad'); return; } }
+      if (!validApplicant(data)) return;
+      if (typeof __applicantPhoto !== 'undefined' && __applicantPhoto) data.f_photo = __applicantPhoto;
+      toast('Submitting…', 'info');
+      const ap = newApplicant(e, data, prog, 'public');
+      ap.symbol = await allocEntranceSymbol(e, prog);   // <-- instant, server-unique symbol
+      const apps = DB.read('apps', []); apps.push(ap); DB.write('apps', apps);
+      try { __applicantPhoto = ''; } catch (_) { }
+      DB.write('pubState', { appId: ap.id }); renderEntrancePortal(e);
+      toast(ap.symbol ? ('Submitted — your Symbol No is ' + ap.symbol) : 'Submitted — the office will issue your Symbol No', 'ok');
+      sendToCollege('application', ap);
+    }
+
     function emptyState(title, body, cta, onclick) {
       return `<div class="empty"><div class="big">✦</div><h3>${esc(title)}</h3>${body ? `<p>${body}</p>` : ''}
     ${cta && onclick ? `<button class="btn primary" style="margin-top:8px" onclick="${onclick}">${esc(cta)}</button>` : ''}</div>`;
